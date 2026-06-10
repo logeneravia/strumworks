@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Founder console — Strum</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#F4EDDF; --canvas-2:#EFE6D4; --card:#FFFCF6; --ink:#221C14; --ink-soft:#6B6152; --ink-faint:#988E7C;
+    --pine:#1C4A3B; --pine-deep:#143729; --pine-tint:#E3ECE5;
+    --honey:#C67A1E; --honey-soft:#E0A24A; --honey-tint:#F6E7C9; --rust:#A8472A;
+    --line:rgba(34,28,20,.12);
+    --shadow:0 2px 6px rgba(34,28,20,.05),0 18px 40px rgba(34,28,20,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Hanken Grotesk",sans-serif;background:var(--canvas);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:860px;margin:0 auto;padding:0 24px}
+  .eyebrow{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  h1,h2{font-family:"Fraunces",serif;font-weight:500;letter-spacing:-.015em;line-height:1.12}
+  h1{font-size:clamp(26px,4.4vw,38px)}
+  p{color:var(--ink-soft);font-size:15.5px}
+  header{background:rgba(244,237,223,.9);border-bottom:1px solid rgba(34,28,20,.07)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:70px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-weight:600;font-size:21px;color:var(--pine)}
+  .mark{width:28px;height:28px}
+  main{padding:clamp(34px,6vw,56px) 0 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:clamp(22px,4vw,32px);margin-top:22px}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);text-align:left;font-weight:600;padding:0 12px 10px 0;border-bottom:1px solid var(--line)}
+  td{padding:13px 12px 13px 0;border-bottom:1px solid rgba(34,28,20,.06);color:var(--ink)}
+  td.soft{color:var(--ink-soft)}
+  .pill{display:inline-block;background:var(--honey-tint);color:#6b4a12;font-size:12px;font-weight:600;border-radius:99px;padding:3px 11px}
+  textarea{width:100%;font:inherit;font-size:15px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;min-height:110px;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  .tnote{font-size:12.5px;color:var(--ink-faint);margin:8px 0 12px}
+  .btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:14.5px;border:0;border-radius:11px;padding:11px 20px;cursor:pointer;background:var(--pine);color:#fff;transition:.18s}
+  .btn:hover{background:var(--pine-deep)}
+  .btn[disabled]{opacity:.6;cursor:wait}
+  .saved{display:none;font-size:13.5px;color:var(--pine);font-weight:600;margin-left:12px}
+  .state{text-align:center;padding:60px 0}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <span class="brand">
+      <svg class="mark" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="3.2" fill="#C67A1E"/><path d="M20 13.5a6.5 6.5 0 0 1 6.5 6.5M20 8a12 12 0 0 1 12 12M20 13.5a6.5 6.5 0 0 0-6.5 6.5M20 8A12 12 0 0 0 8 20" stroke="#1C4A3B" stroke-width="2" stroke-linecap="round"/></svg>
+      Strum
+    </span>
+    <span style="font-size:13.5px;color:var(--ink-faint)">Founder console</span>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div id="loading" class="state"><p>Opening the console…</p></div>
+
+    <div id="err" class="state hidden">
+      <span class="eyebrow">One small thing</span>
+      <h1>That link has done its hour.</h1>
+      <p>Text <strong>DASH</strong> to the house number and a fresh one arrives in seconds.</p>
+    </div>
+
+    <div id="view" class="hidden">
+      <span class="eyebrow">Founder console</span>
+      <h1 id="headline">&nbsp;</h1>
+
+      <div class="card">
+        <h2 style="font-size:20px;margin-bottom:16px">Tenants</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Business</th><th>Admin</th><th>Number</th><th>Plan</th><th>Clients</th><th>Since</th></tr></thead>
+            <tbody id="tenantrows"></tbody>
+          </table>
+        </div>
+        <p id="notenants" class="hidden" style="margin-top:10px">No tenants yet — send someone to strumworks.com/start.</p>
+      </div>
+
+      <div class="card">
+        <h2 style="font-size:20px;margin-bottom:6px">Platform messages</h2>
+        <p style="font-size:14px">Your words, sent by the system. Edit and save — the next signup uses the new copy immediately.</p>
+        <div id="templates" style="margin-top:18px"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  var API = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/dash-api";
+  var t = new URLSearchParams(location.search).get('t') || "";
+  function show(id){ ['loading','err','view'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
+  function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+  if(!t){ show('err'); }
+  else fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token:t})})
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+    .then(function(res){
+      if(!res.ok || !res.body.ok || res.body.role !== 'founder'){ show('err'); return; }
+      var d = res.body;
+      document.getElementById('headline').textContent = "Hello, " + d.first_name + ".";
+
+      var rows = document.getElementById('tenantrows');
+      if(!d.tenants.length){ document.getElementById('notenants').classList.remove('hidden'); }
+      d.tenants.forEach(function(x){
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><strong>'+esc(x.company)+'</strong></td><td class="soft">'+esc(x.admin)+'</td>'+
+          '<td class="soft">'+esc(x.number)+'</td><td><span class="pill">'+esc(x.plan)+'</span></td>'+
+          '<td class="soft">'+x.clients+' / '+x.client_limit+'</td>'+
+          '<td class="soft">'+ (x.since||'').slice(0,10) +'</td>';
+        rows.appendChild(tr);
+      });
+
+      var box = document.getElementById('templates');
+      d.templates.forEach(function(tpl){
+        var div = document.createElement('div');
+        div.style.marginBottom = '26px';
+        div.innerHTML = '<div style="font-weight:600;font-size:14px;margin-bottom:6px">'+esc(tpl.key)+'</div>'+
+          '<div class="tnote">'+esc(tpl.notes||'')+'</div>'+
+          '<textarea id="tpl-'+esc(tpl.key)+'">'+esc(tpl.body)+'</textarea>'+
+          '<div style="margin-top:10px"><button class="btn" data-key="'+esc(tpl.key)+'">Save</button><span class="saved" id="saved-'+esc(tpl.key)+'">Saved ✓</span></div>';
+        box.appendChild(div);
+      });
+      box.addEventListener('click', function(ev){
+        var btn = ev.target.closest('button[data-key]'); if(!btn) return;
+        var key = btn.getAttribute('data-key');
+        var body = document.getElementById('tpl-'+key).value.trim();
+        if(!body) return alert("The message can't be empty.");
+        btn.disabled = true; btn.textContent = "Saving…";
+        fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({token:t, action:"update_template", key:key, body:body})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          btn.disabled = false; btn.textContent = "Save";
+          if(j.ok){ var s=document.getElementById('saved-'+key); s.style.display='inline'; setTimeout(function(){s.style.display='none';},2500); }
+          else alert("Save failed: " + (j.error||'unknown'));
+        })
+        .catch(function(){ btn.disabled=false; btn.textContent="Save"; alert("Couldn't reach the server."); });
+      });
+
+      show('view');
+    })
+    .catch(function(){ show('err'); });
+</script>
+</body>
+</html>

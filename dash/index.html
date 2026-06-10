@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your dashboard — Strum</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#F4EDDF; --canvas-2:#EFE6D4; --card:#FFFCF6; --ink:#221C14; --ink-soft:#6B6152; --ink-faint:#988E7C;
+    --pine:#1C4A3B; --pine-deep:#143729; --pine-soft:#2F6B57; --pine-tint:#E3ECE5;
+    --honey:#C67A1E; --honey-soft:#E0A24A; --honey-tint:#F6E7C9; --rust:#A8472A;
+    --line:rgba(34,28,20,.12);
+    --shadow:0 2px 6px rgba(34,28,20,.05),0 18px 40px rgba(34,28,20,.08);
+    --shadow-lg:0 4px 12px rgba(34,28,20,.08),0 34px 70px rgba(34,28,20,.14);
+    --r:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Hanken Grotesk",sans-serif;background:var(--canvas);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  .eyebrow{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  h1,h2{font-family:"Fraunces",serif;font-weight:500;letter-spacing:-.015em;line-height:1.12}
+  h1{font-size:clamp(26px,4.4vw,38px)}
+  p{color:var(--ink-soft);font-size:16px}
+  header{background:rgba(244,237,223,.9);border-bottom:1px solid rgba(34,28,20,.07)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:70px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-weight:600;font-size:21px;color:var(--pine)}
+  .mark{width:28px;height:28px}
+  main{padding:clamp(34px,6vw,60px) 0 70px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:clamp(24px,4vw,36px);margin-bottom:20px}
+  .numline{font-family:"Fraunces",serif;font-size:clamp(24px,4vw,32px);color:var(--pine);margin:4px 0 2px}
+  .nlabel{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  .planchip{display:inline-block;background:var(--honey-tint);color:#6b4a12;font-size:13px;font-weight:600;border-radius:99px;padding:6px 14px;margin-top:10px}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+  @media(max-width:560px){.meters{grid-template-columns:1fr}}
+  .meter-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+  .meter-card .lab{font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:10px}
+  .meter{height:10px;border-radius:99px;background:var(--pine-tint);overflow:hidden}
+  .meter>i{display:block;height:100%;background:linear-gradient(90deg,var(--honey-soft),var(--honey));border-radius:99px;transition:width .6s ease}
+  .meter-card .nums{font-family:"Fraunces",serif;font-size:19px;margin-top:9px;color:var(--ink)}
+  .next li{font-size:15px;color:var(--ink-soft);margin-bottom:9px;display:flex;gap:10px}
+  .next li .i{color:var(--pine);font-weight:600;flex-shrink:0}
+  .state{text-align:center;padding:60px 0}
+  .state h1{margin-bottom:12px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <span class="brand">
+      <svg class="mark" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="3.2" fill="#C67A1E"/><path d="M20 13.5a6.5 6.5 0 0 1 6.5 6.5M20 8a12 12 0 0 1 12 12M20 13.5a6.5 6.5 0 0 0-6.5 6.5M20 8A12 12 0 0 0 8 20" stroke="#1C4A3B" stroke-width="2" stroke-linecap="round"/></svg>
+      <span id="brandname">Strum</span>
+    </span>
+    <span style="font-size:13.5px;color:var(--ink-faint)" id="who"></span>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div id="loading" class="state"><p>Opening your dashboard…</p></div>
+
+    <div id="err" class="state hidden">
+      <span class="eyebrow">One small thing</span>
+      <h1>That link has done its hour.</h1>
+      <p>Links keep your dashboard safe by expiring quietly. Text <strong>DASH</strong> to the number that welcomed you, and a fresh one arrives in seconds.</p>
+    </div>
+
+    <div id="view" class="hidden">
+      <span class="eyebrow">Your dashboard</span>
+      <h1 id="headline">&nbsp;</h1>
+
+      <div class="card" style="margin-top:22px">
+        <div class="nlabel">Your business number</div>
+        <div class="numline" id="number">&nbsp;</div>
+        <p style="font-size:14.5px">Local, reserved, and yours — this is the number your clients will text.</p>
+        <span class="planchip" id="plan">&nbsp;</span>
+      </div>
+
+      <div class="meters">
+        <div class="meter-card">
+          <div class="lab">Client spots</div>
+          <div class="meter"><i id="m-clients" style="width:0%"></i></div>
+          <div class="nums" id="n-clients">&nbsp;</div>
+        </div>
+        <div class="meter-card">
+          <div class="lab">Messages</div>
+          <div class="meter"><i id="m-msgs" style="width:0%"></i></div>
+          <div class="nums" id="n-msgs">&nbsp;</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h2 style="font-size:20px;margin-bottom:14px">What's next</h2>
+        <ul class="next" style="list-style:none">
+          <li><span class="i">→</span> Your join keyword and QR code — so clients can sign themselves up at the counter. <em>Arriving with setup, very soon.</em></li>
+          <li><span class="i">→</span> Your brand colour on everything your clients see.</li>
+          <li><span class="i">→</span> Your first broadcast — composed once, sent warmly.</li>
+        </ul>
+        <p style="font-size:13.5px;margin-top:14px;color:var(--ink-faint)">This dashboard is young and growing weekly — you're seeing it early, on purpose. Reply to any Strum text and a human reads it.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  var API = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/dash-api";
+  var t = new URLSearchParams(location.search).get('t') || "";
+  function show(id){ ['loading','err','view'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
+  if(!t){ show('err'); }
+  else fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token:t})})
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+    .then(function(res){
+      if(!res.ok || !res.body.ok || res.body.role !== 'tenant'){ show('err'); return; }
+      var d = res.body;
+      document.getElementById('headline').textContent = "Hi " + d.first_name + " — " + d.company + " is live.";
+      document.getElementById('brandname').textContent = d.company;
+      document.getElementById('who').textContent = d.first_name;
+      document.getElementById('number').textContent = d.number;
+      document.getElementById('plan').textContent = d.plan === 'trial' ? "Starter — thanks for playing" : d.plan;
+      var cl = d.client_count, cm = d.client_limit || 5;
+      document.getElementById('m-clients').style.width = Math.min(100, (cl/cm)*100) + "%";
+      document.getElementById('n-clients').textContent = cl + " of " + cm;
+      var ms = d.messages_sent, mb = d.message_bundle || 50;
+      document.getElementById('m-msgs').style.width = Math.min(100, (ms/mb)*100) + "%";
+      document.getElementById('n-msgs').textContent = ms + " of " + mb + " sent";
+      show('view');
+    })
+    .catch(function(){ show('err'); });
+</script>
+</body>
+</html>
