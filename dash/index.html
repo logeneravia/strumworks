@@ -268,11 +268,23 @@
         : '';
       var src = c.source==='keyword_optin' ? 'joined by text'
               : c.source==='tenant_invite' ? 'your invite' : (c.source||'');
+      var wd = (c.status === 'invited' && c.id)
+        ? '<button class="btn" style="padding:5px 12px;font-size:12px;background:var(--rust)" data-withdraw="'+esc(c.id)+'">Withdraw</button>'
+        : '';
       var tr = document.createElement('tr');
       tr.innerHTML = '<td><strong>'+esc(name)+'</strong>'+chip+'</td><td class="soft">'+esc(c.phone)+'</td>'+
         '<td class="soft">'+esc((c.created_at||'').slice(0,10))+'</td>'+
-        '<td class="soft">'+esc(src)+'</td>';
+        '<td class="soft">'+esc(src)+'</td><td>'+wd+'</td>';
       rows.appendChild(tr);
+    });
+    rows.addEventListener('click', function(ev){
+      var btn = ev.target.closest('button[data-withdraw]'); if(!btn) return;
+      if(!confirm("Withdraw this invitation? They disappear from your list. (The text on their phone can't be unsent.)")) return;
+      btn.disabled = true; btn.textContent = "…";
+      api({token:t, action:"withdraw_client_invite", key:btn.getAttribute('data-withdraw')}).then(function(r){
+        if(r.body.ok){ location.reload(); }
+        else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(r.body.error||'unknown')); }
+      }).catch(function(){ btn.disabled=false; btn.textContent="Withdraw"; });
     });
 
     // QR download + share (share opens the native sheet — Save to Photos
