@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Start free — Strum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#F4EDDF; --canvas-2:#EFE6D4; --card:#FFFCF6; --ink:#221C14; --ink-soft:#6B6152; --ink-faint:#988E7C;
+    --pine:#1C4A3B; --pine-deep:#143729; --pine-soft:#2F6B57; --pine-tint:#E3ECE5;
+    --honey:#C67A1E; --honey-soft:#E0A24A; --honey-tint:#F6E7C9; --rust:#A8472A;
+    --line:rgba(34,28,20,.12); --line-soft:rgba(34,28,20,.07);
+    --shadow:0 2px 6px rgba(34,28,20,.05),0 18px 40px rgba(34,28,20,.08);
+    --shadow-lg:0 4px 12px rgba(34,28,20,.08),0 34px 70px rgba(34,28,20,.14);
+    --r:18px; --maxw:1120px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Hanken Grotesk",sans-serif;background:var(--canvas);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px;width:100%}
+  .eyebrow{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  h1,h2{font-family:"Fraunces",serif;font-weight:500;letter-spacing:-.015em;line-height:1.12;color:var(--ink)}
+  h1{font-size:clamp(30px,4.6vw,44px)}
+  p{color:var(--ink-soft);font-size:16.5px}
+
+  header{position:sticky;top:0;z-index:50;background:rgba(244,237,223,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line-soft)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:74px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:"Fraunces",serif;font-weight:600;font-size:23px;color:var(--pine)}
+  .mark{width:30px;height:30px;flex-shrink:0}
+  .back{font-size:15px;font-weight:500;color:var(--ink-soft)}.back:hover{color:var(--pine)}
+
+  main{flex:1;display:grid;place-items:start center;padding:clamp(40px,7vw,80px) 0 60px;position:relative;overflow:hidden}
+  main::before{content:"";position:absolute;inset:0;background:radial-gradient(110% 80% at 80% 0%, rgba(224,162,74,.14), transparent 55%),radial-gradient(80% 70% at 8% 100%, rgba(28,74,59,.09), transparent 60%);pointer-events:none}
+  .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow-lg);padding:clamp(30px,5vw,48px);max-width:560px;width:calc(100% - 56px);margin:0 28px}
+  .card .lede{margin:14px 0 28px;font-size:16px}
+
+  label{display:block;font-size:14px;font-weight:600;color:var(--ink);margin:0 0 6px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:520px){.row2{grid-template-columns:1fr}}
+  .field{margin-bottom:18px}
+  input[type=text],input[type=email],input[type=tel]{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;transition:.15s}
+  input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  .hint{font-size:12.5px;color:var(--ink-faint);margin-top:5px}
+
+  .consent{display:flex;gap:11px;align-items:flex-start;background:var(--pine-tint);border-radius:13px;padding:14px 15px;margin:6px 0 22px}
+  .consent input{margin-top:4px;width:17px;height:17px;accent-color:var(--pine);flex-shrink:0}
+  .consent span{font-size:13.5px;color:var(--ink-soft);line-height:1.5}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font:inherit;font-weight:600;font-size:16px;border:0;border-radius:13px;padding:15px 28px;cursor:pointer;transition:.18s;width:100%}
+  .btn.pine{background:var(--pine);color:#fff}.btn.pine:hover{background:var(--pine-deep);transform:translateY(-1px)}
+  .btn[disabled]{opacity:.6;cursor:wait;transform:none}
+  .fine{font-size:12.5px;color:var(--ink-faint);margin-top:14px;text-align:center}
+
+  .msg{border-radius:13px;padding:14px 16px;font-size:14.5px;margin-bottom:18px;display:none}
+  .msg.err{display:block;background:#F8E7DF;color:var(--rust);border:1px solid rgba(168,71,42,.25)}
+
+  .success{display:none;text-align:center;padding:10px 0 4px}
+  .success .big-num{font-family:"Fraunces",serif;font-size:clamp(26px,4vw,34px);color:var(--pine);margin:18px 0 4px}
+  .success .nlabel{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  .success p{margin-top:16px}
+  .success .phone-cue{display:inline-flex;align-items:center;gap:10px;background:var(--honey-tint);border-radius:13px;padding:12px 18px;font-size:14.5px;color:#6b4a12;font-weight:500;margin-top:22px}
+
+  .honeypot{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
+
+  footer{background:transparent;padding:20px 0 26px;text-align:center;font-size:13px;color:var(--ink-faint)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="/">
+      <svg class="mark" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="3.2" fill="#C67A1E"/><path d="M20 13.5a6.5 6.5 0 0 1 6.5 6.5M20 8a12 12 0 0 1 12 12M20 13.5a6.5 6.5 0 0 0-6.5 6.5M20 8A12 12 0 0 0 8 20" stroke="#1C4A3B" stroke-width="2" stroke-linecap="round"/></svg>
+      Strum
+    </a>
+    <a class="back" href="/">&larr; Back to the site</a>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <div id="formview">
+      <span class="eyebrow">Start free</span>
+      <h1>Set up your shop.</h1>
+      <p class="lede">Your name, your shop, your mobile — that's all we need. We'll reserve a <strong>local number that's yours</strong>, and text you a welcome to get things rolling. Five client spots and fifty messages to play with, on us.</p>
+
+      <div class="msg err" id="errbox"></div>
+
+      <form id="f" novalidate>
+        <div class="row2">
+          <div class="field">
+            <label for="first_name">First name</label>
+            <input type="text" id="first_name" name="first_name" autocomplete="given-name" required>
+          </div>
+          <div class="field">
+            <label for="last_name">Last name</label>
+            <input type="text" id="last_name" name="last_name" autocomplete="family-name" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="company">Business name</label>
+          <input type="text" id="company" name="company" autocomplete="organization" required>
+          <div class="hint">Exactly as your customers know it — it leads every text you send.</div>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="mobile">Your mobile</label>
+          <input type="tel" id="mobile" name="mobile" autocomplete="tel" placeholder="(403) 555-0123" required>
+          <div class="hint">We'll text your welcome here — and match your new business number to your area code.</div>
+        </div>
+
+        <div class="honeypot" aria-hidden="true">
+          <label for="website">Website</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <label class="consent">
+          <input type="checkbox" id="consent">
+          <span>Yes — Strumworks may text me about my account and setup. Messages are few and useful; reply STOP any time. We keep your details only to run your account — no marketing without your say-so.</span>
+        </label>
+
+        <button class="btn pine" id="submit" type="submit">Create my workspace</button>
+        <div class="fine">No credit card. Live in minutes.</div>
+      </form>
+    </div>
+
+    <div class="success" id="successview">
+      <span class="eyebrow">Welcome to Strum</span>
+      <h1 id="s-head">You're in.</h1>
+      <div class="nlabel" style="margin-top:26px">Your business number</div>
+      <div class="big-num" id="s-number">&nbsp;</div>
+      <p id="s-copy">It's local, it's reserved, and it's yours — your clients will text it to join your list.</p>
+      <div class="phone-cue">📱 Check your phone — your welcome text is on its way.</div>
+      <p style="font-size:14px;margin-top:24px">Your setup link comes next — we'll text it to you as soon as your dashboard is ready.</p>
+    </div>
+  </div>
+</main>
+
+<footer>© 2026 Strum · Made in Red Deer, Alberta · A text is a strum.</footer>
+
+<script>
+  var FN_URL = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/tenant-signup";
+  var form = document.getElementById('f');
+  var errbox = document.getElementById('errbox');
+  var btn = document.getElementById('submit');
+
+  function fail(msg){ errbox.textContent = msg; errbox.style.display = 'block'; window.scrollTo({top:0,behavior:'smooth'}); }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    errbox.style.display = 'none';
+
+    var first = document.getElementById('first_name').value.trim();
+    var last = document.getElementById('last_name').value.trim();
+    var company = document.getElementById('company').value.trim();
+    var email = document.getElementById('email').value.trim();
+    var mobile = document.getElementById('mobile').value.trim();
+    var consent = document.getElementById('consent').checked;
+    var website = document.getElementById('website').value;
+
+    if(!first || !last) return fail("We'd love your first and last name.");
+    if(!company) return fail("What's your business called?");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail("That email doesn't look quite right.");
+    if(mobile.replace(/\D/g,'').length < 10) return fail("Your mobile needs 10 digits — it's where your welcome text lands.");
+    if(!consent) return fail("The consent box is the one thing we can't skip — Canadian rules, kept honestly.");
+
+    btn.disabled = true; btn.textContent = "Setting up your shop…";
+
+    fetch(FN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_name:first, last_name:last, company:company, email:email, mobile:mobile, consent:consent, website:website })
+    })
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, body:j }; }); })
+    .then(function(res){
+      if(res.ok && res.body && res.body.ok){
+        document.getElementById('formview').style.display = 'none';
+        document.getElementById('s-head').textContent = "You're in, " + first + ".";
+        document.getElementById('s-number').textContent = res.body.your_number || "";
+        document.getElementById('successview').style.display = 'block';
+        window.scrollTo({top:0,behavior:'smooth'});
+      } else if(res.body && res.body.error === 'already_signed_up'){
+        fail("Good news — this mobile already has a Strumworks workspace. Your setup link will reach you there.");
+        btn.disabled = false; btn.textContent = "Create my workspace";
+      } else {
+        fail("Something went wrong on our side — nothing was charged, and we'd love a second try. (" + ((res.body && (res.body.error || res.body.message)) || "unknown") + ")");
+        btn.disabled = false; btn.textContent = "Create my workspace";
+      }
+    })
+    .catch(function(){
+      fail("We couldn't reach the server — please check your connection and try again.");
+      btn.disabled = false; btn.textContent = "Create my workspace";
+    });
+  });
+</script>
+</body>
+</html>
