@@ -150,6 +150,23 @@
         </div>
       </div>
 
+      <div class="card hidden" id="yours">
+        <h2 style="margin-bottom:6px">Make it fully yours</h2>
+        <p style="font-size:14px">Secure checkout by Stripe — done in a minute, receipt to your email.</p>
+        <div class="meters" style="margin-top:16px">
+          <div class="meter-card">
+            <div class="lab">Own your number — $10, once</div>
+            <p style="font-size:13.5px;margin:4px 0 12px">Your number becomes permanently yours — threads, QR, everything your clients know stays exactly the same. Custom tags unlock.</p>
+            <a class="btn" id="buy-number" target="_blank" rel="noopener">I want my number</a>
+          </div>
+          <div class="meter-card">
+            <div class="lab">Messages — a nickel a hello</div>
+            <p style="font-size:13.5px;margin:4px 0 12px">Your first 50 are on us. After that, every message is 5¢ — top up anytime, and your balance never expires.</p>
+            <a class="btn" id="buy-topup" target="_blank" rel="noopener">Top me up</a>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h2 style="margin-bottom:14px">What's next</h2>
         <ul class="next" style="list-style:none">
@@ -241,6 +258,16 @@
         else alert("Save failed: " + (r.body.error||'unknown'));
       });
     });
+
+    // Purchases — Stripe collects, deposits, and notifies. The card stays
+    // hidden until the payment links exist (lights up the moment the
+    // founder's Stripe key is wired — no dead doors).
+    if(d.payment_links && d.payment_links.own_number && d.payment_links.top_up){
+      var ref = "?client_reference_id=" + encodeURIComponent(d.workspace_id || "");
+      document.getElementById('buy-number').href = d.payment_links.own_number + ref;
+      document.getElementById('buy-topup').href = d.payment_links.top_up + ref;
+      document.getElementById('yours').classList.remove('hidden');
+    }
 
     // Their colour.
     document.getElementById('colour').addEventListener('input', function(){ applyBrand(this.value); });
