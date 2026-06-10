@@ -82,6 +82,26 @@
       </div>
 
       <div class="card">
+        <h2 style="font-size:20px;margin-bottom:6px">Invite a tenant</h2>
+        <p style="font-size:14px">Tell them it's coming, type them in, send. They get a personal text from the house number with their signup link — and nothing further if they let it rest.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;max-width:560px">
+          <div>
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name</label>
+            <input type="text" id="ti-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+            <input type="tel" id="ti-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+          <button class="btn" id="ti-send">Send invitation</button>
+          <span class="saved" id="ti-saved">Invitation sent ✓</span>
+          <span style="display:none;font-size:13.5px;color:var(--rust)" id="ti-err"></span>
+        </div>
+      </div>
+
+      <div class="card">
         <h2 style="font-size:20px;margin-bottom:6px">Platform messages</h2>
         <p style="font-size:14px">Your words, sent by the system. Edit and save — the next signup uses the new copy immediately.</p>
         <div id="templates" style="margin-top:18px"></div>
@@ -140,6 +160,33 @@
           else alert("Save failed: " + (j.error||'unknown'));
         })
         .catch(function(){ btn.disabled=false; btn.textContent="Save"; alert("Couldn't reach the server."); });
+      });
+
+      // Invite a tenant.
+      document.getElementById('ti-send').addEventListener('click', function(){
+        var btn=this, first=document.getElementById('ti-first').value.trim(),
+            mobile=document.getElementById('ti-mobile').value.trim(),
+            err=document.getElementById('ti-err');
+        err.style.display='none';
+        if(!first){ err.textContent="First name, please — the text greets them by it."; err.style.display='inline'; return; }
+        if(mobile.replace(/\D/g,'').length < 10){ err.textContent="Mobile needs 10 digits."; err.style.display='inline'; return; }
+        btn.disabled=true; btn.textContent="Sending…";
+        fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({token:t, action:"invite_tenant", key:first, body:mobile})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          btn.disabled=false; btn.textContent="Send invitation";
+          if(j.ok){
+            var s=document.getElementById('ti-saved'); s.style.display='inline';
+            document.getElementById('ti-first').value=''; document.getElementById('ti-mobile').value='';
+            setTimeout(function(){ s.style.display='none'; }, 3000);
+          } else {
+            var msgs = {already_a_tenant:"They already have a workspace."};
+            err.textContent = msgs[j.error] || ("Couldn't send: " + (j.error||'unknown'));
+            err.style.display='inline';
+          }
+        })
+        .catch(function(){ btn.disabled=false; btn.textContent="Send invitation"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
       });
 
       show('view');
