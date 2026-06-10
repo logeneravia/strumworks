@@ -82,6 +82,17 @@
       </div>
 
       <div class="card">
+        <h2 style="font-size:20px;margin-bottom:16px">People</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Name</th><th>Mobile</th><th>Status</th><th>How</th><th>Since</th><th></th></tr></thead>
+            <tbody id="peoplerows"></tbody>
+          </table>
+        </div>
+        <p id="nopeople" class="hidden" style="margin-top:10px">Nobody yet.</p>
+      </div>
+
+      <div class="card">
         <h2 style="font-size:20px;margin-bottom:6px">Invite a tenant</h2>
         <p style="font-size:14px">Tell them it's coming, type them in, send. They get a personal text from the house number with their signup link — and nothing further if they let it rest.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;max-width:560px">
@@ -160,6 +171,37 @@
           else alert("Save failed: " + (j.error||'unknown'));
         })
         .catch(function(){ btn.disabled=false; btn.textContent="Save"; alert("Couldn't reach the server."); });
+      });
+
+      // People — the house roster, with Withdraw on still-invited rows.
+      var prow = document.getElementById('peoplerows');
+      if(!d.people || !d.people.length){ document.getElementById('nopeople').classList.remove('hidden'); }
+      (d.people||[]).forEach(function(pn){
+        var name = ((pn.first_name||'') + ' ' + (pn.last_name||'')).trim() || '—';
+        var tagstr = (pn.tags||[]).join(', ');
+        var chip = pn.status === 'invited'
+          ? '<span class="pill">invited</span>'
+          : '<span class="pill" style="background:var(--pine-tint);color:var(--pine)">'+esc(pn.status)+'</span>';
+        var how = pn.source==='founder_invite' ? 'your invite'
+                : pn.source==='tenant_signup' ? 'signed up' : (pn.source||tagstr);
+        var wd = pn.status === 'invited'
+          ? '<button class="btn" style="padding:6px 13px;font-size:12.5px;background:var(--rust)" data-withdraw="'+esc(pn.id)+'">Withdraw</button>'
+          : '';
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><strong>'+esc(name)+'</strong></td><td class="soft">'+esc(pn.phone)+'</td>'+
+          '<td>'+chip+'</td><td class="soft">'+esc(how)+'</td>'+
+          '<td class="soft">'+esc((pn.created_at||'').slice(0,10))+'</td><td>'+wd+'</td>';
+        prow.appendChild(tr);
+      });
+      prow.addEventListener('click', function(ev){
+        var btn = ev.target.closest('button[data-withdraw]'); if(!btn) return;
+        if(!confirm("Withdraw this invitation? Their record disappears from your list. (The text already on their phone can't be unsent, and the signup page stays public.)")) return;
+        btn.disabled = true; btn.textContent = "…";
+        fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({token:t, action:"withdraw_prospect", key:btn.getAttribute('data-withdraw')})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(j.ok){ location.reload(); } else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(j.error||'unknown')); } })
+        .catch(function(){ btn.disabled=false; btn.textContent="Withdraw"; });
       });
 
       // Invite a tenant.
