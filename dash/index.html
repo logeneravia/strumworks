@@ -286,6 +286,34 @@
           </div>
         </div>
 
+        <div class="card" id="team-card">
+          <h2 style="margin-bottom:6px">Your team</h2>
+          <p style="font-size:14px">Colleagues who help you run the place. <strong>Admins</strong> can do everything you can; <strong>Staff</strong> can see the dashboard and the inbox. They join the same way everyone does — invited by text, in by their own DASH.</p>
+          <div style="overflow-x:auto;margin-top:14px">
+            <table><tbody id="teamrows"></tbody></table>
+          </div>
+          <p id="noteam" class="hidden" style="margin-top:8px;font-size:14.5px">Just you so far.</p>
+          <div class="meters" style="margin-top:18px">
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name</label>
+              <input type="text" id="tm-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+              <input type="tel" id="tm-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <select id="tm-level" style="font:inherit;font-size:14.5px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+              <option value="staff">Staff — sees the dashboard</option>
+              <option value="admin">Admin — can do everything</option>
+            </select>
+            <button class="btn" id="tm-send" style="width:auto">Send invitation</button>
+            <span class="saved" id="tm-saved">Invitation sent ✓</span>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="tm-err"></span>
+          </div>
+        </div>
+
         <div class="card">
           <h2 style="margin-bottom:6px">Your colour</h2>
           <p style="font-size:14px">Pick the colour your place is known by — your dashboard wears it now, and everything your clients see will wear it too.</p>
@@ -333,8 +361,14 @@
 
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
-    if(!res.ok || !res.body.ok || res.body.role !== 'tenant'){ show('err'); return; }
+    if(!res.ok || !res.body.ok || (res.body.role !== 'tenant' && res.body.role !== 'team')){ show('err'); return; }
     var d = res.body;
+    var isStaff = (d.role === 'team' && d.power === 'staff');
+    if(isStaff){
+      // Staff see the place; admins shape it. (Server enforces the same.)
+      var pb = document.querySelector('.tabbtn[data-tab="profile"]'); if(pb) pb.style.display='none';
+      if(location.hash === '#profile') setTab('home');
+    }
     if(d.brand_colour){ applyBrand(d.brand_colour); document.getElementById('colour').value = d.brand_colour; }
     document.getElementById('headline').textContent = "Hi " + d.first_name + " — " + d.company + " is live.";
     document.getElementById('brandname').textContent = d.company;
@@ -353,6 +387,57 @@
       var mark = brandEl.querySelector('.mark');
       if(mark){ mark.outerHTML = '<img src="'+esc(d.logo)+'?v='+Date.now()+'" style="width:28px;height:28px;border-radius:7px;object-fit:contain">'; }
     }
+
+    if(isStaff){
+      var yc = document.getElementById('yours'); if(yc) yc.remove();
+      var cwBtn = document.getElementById('cw-save'); if(cwBtn) cwBtn.style.display='none';
+      var acCard = document.getElementById('inv-send'); if(acCard) acCard.closest('.card').style.display='none';
+    }
+
+    // The team.
+    var trs = document.getElementById('teamrows');
+    if(!d.team || !d.team.length){ document.getElementById('noteam').classList.remove('hidden'); }
+    (d.team||[]).forEach(function(m){
+      var chip = m.status === 'invited'
+        ? ' <span style="background:var(--honey-tint);color:#6b4a12;font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px">invited</span>' : '';
+      var lvl = '<span style="background:var(--brand-tint);color:var(--brand);font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px">'+esc(m.level)+'</span>';
+      var wd = (m.status === 'invited')
+        ? '<button class="btn" style="padding:5px 12px;font-size:12px;background:var(--rust)" data-withdraw="'+esc(m.id)+'">Withdraw</button>' : '';
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><strong>'+esc(m.name||'—')+'</strong>'+chip+'</td><td>'+lvl+'</td>'+
+        '<td class="soft">'+esc(m.phone)+'</td><td class="soft">'+esc((m.since||'').slice(0,10))+'</td><td>'+wd+'</td>';
+      trs.appendChild(tr);
+    });
+    trs.addEventListener('click', function(ev){
+      var btn = ev.target.closest('button[data-withdraw]'); if(!btn) return;
+      if(!confirm("Withdraw this team invitation?")) return;
+      btn.disabled = true; btn.textContent = "…";
+      api({token:t, action:"withdraw_client_invite", key:btn.getAttribute('data-withdraw')}).then(function(r){
+        if(r.body.ok){ location.reload(); }
+        else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(r.body.error||'unknown')); }
+      });
+    });
+    document.getElementById('tm-send').addEventListener('click', function(){
+      var btn=this, first=document.getElementById('tm-first').value.trim(),
+          mobile=document.getElementById('tm-mobile').value.trim(),
+          level=document.getElementById('tm-level').value,
+          err=document.getElementById('tm-err');
+      err.style.display='none';
+      if(!first){ err.textContent="First name, please."; err.style.display='inline'; return; }
+      if(mobile.replace(/\D/g,'').length < 10){ err.textContent="Mobile needs 10 digits."; err.style.display='inline'; return; }
+      btn.disabled=true; btn.textContent="Sending…";
+      api({token:t, action:"invite_team", key:first, body:mobile, level:level}).then(function(r){
+        btn.disabled=false; btn.textContent="Send invitation";
+        if(r.body.ok){
+          var s=document.getElementById('tm-saved'); s.style.display='inline';
+          setTimeout(function(){ location.reload(); }, 1400);
+        } else {
+          var msgs = {already_on_team:"They're already on the team.", thats_the_owner:"That's you — you're already the owner."};
+          err.textContent = msgs[r.body.error] || ("Couldn't send: " + (r.body.error||'unknown'));
+          err.style.display='inline';
+        }
+      }).catch(function(){ btn.disabled=false; btn.textContent="Send invitation"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
+    });
 
     document.getElementById('biz-city').value = d.city || "";
 

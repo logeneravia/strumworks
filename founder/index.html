@@ -138,6 +138,34 @@
           <p id="nopeople" class="hidden" style="margin-top:10px">Nobody yet.</p>
         </div>
 
+        <div class="card" id="hteam-card">
+          <h2 style="font-size:20px;margin-bottom:6px">House team</h2>
+          <p style="font-size:14px">Colleagues who help run Strumworks. <strong>Admins</strong> can do what you can; <strong>Staff</strong> can see the console and the inbox.</p>
+          <div style="overflow-x:auto;margin-top:14px">
+            <table><tbody id="hteamrows"></tbody></table>
+          </div>
+          <p id="nohteam" class="hidden" style="margin-top:8px;font-size:14.5px">Just you so far. (And the cat, in spirit.)</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;max-width:560px">
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name</label>
+              <input type="text" id="ht-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+              <input type="tel" id="ht-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <select id="ht-level" style="font:inherit;font-size:14.5px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+              <option value="staff">Staff — sees the console</option>
+              <option value="admin">Admin — can do everything</option>
+            </select>
+            <button class="btn" id="ht-send">Send invitation</button>
+            <span class="saved" id="ht-saved">Invitation sent ✓</span>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="ht-err"></span>
+          </div>
+        </div>
+
         <div class="card">
           <h2 style="font-size:20px;margin-bottom:6px">Invite a tenant</h2>
           <p style="font-size:14px">Tell them it's coming, type them in, send. They get a personal text from the house number with their signup link — and nothing further if they let it rest.</p>
@@ -290,6 +318,58 @@
         .then(function(r){ return r.json(); })
         .then(function(j){ if(j.ok){ location.reload(); } else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(j.error||'unknown')); } })
         .catch(function(){ btn.disabled=false; btn.textContent="Withdraw"; });
+      });
+
+      // House team.
+      var isStaff = (d.power === 'staff');
+      if(isStaff){
+        var tiCard = document.getElementById('ti-send'); if(tiCard) tiCard.closest('.card').style.display='none';
+        var htCard = document.getElementById('ht-send'); if(htCard) htCard.closest('.card').querySelectorAll('input,select,button').forEach(function(el){ el.disabled = true; });
+        document.querySelectorAll('#templates button[data-key]').forEach(function(b){ b.style.display='none'; });
+      }
+      var htr = document.getElementById('hteamrows');
+      if(!d.team || !d.team.length){ document.getElementById('nohteam').classList.remove('hidden'); }
+      (d.team||[]).forEach(function(m){
+        var chip = m.status === 'invited' ? ' <span class="pill">invited</span>' : '';
+        var lvl = '<span class="pill" style="background:var(--pine-tint);color:var(--pine)">'+esc(m.level)+'</span>';
+        var wd = (m.status === 'invited' && !isStaff)
+          ? '<button class="btn" style="padding:6px 13px;font-size:12.5px;background:var(--rust)" data-hteam-withdraw="'+esc(m.id)+'">Withdraw</button>' : '';
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><strong>'+esc(m.name||'—')+'</strong>'+chip+'</td><td>'+lvl+'</td>'+
+          '<td class="soft">'+esc(m.phone)+'</td><td class="soft">'+esc((m.since||'').slice(0,10))+'</td><td>'+wd+'</td>';
+        htr.appendChild(tr);
+      });
+      htr.addEventListener('click', function(ev){
+        var btn = ev.target.closest('button[data-hteam-withdraw]'); if(!btn) return;
+        if(!confirm("Withdraw this team invitation?")) return;
+        btn.disabled = true; btn.textContent = "…";
+        fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({token:t, action:"withdraw_prospect", key:btn.getAttribute('data-hteam-withdraw')})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(j.ok){ location.reload(); } else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(j.error||'unknown')); } });
+      });
+      document.getElementById('ht-send').addEventListener('click', function(){
+        var btn=this, first=document.getElementById('ht-first').value.trim(),
+            mobile=document.getElementById('ht-mobile').value.trim(),
+            level=document.getElementById('ht-level').value,
+            err=document.getElementById('ht-err');
+        err.style.display='none';
+        if(!first){ err.textContent="First name, please."; err.style.display='inline'; return; }
+        if(mobile.replace(/\D/g,'').length < 10){ err.textContent="Mobile needs 10 digits."; err.style.display='inline'; return; }
+        btn.disabled=true; btn.textContent="Sending…";
+        fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({token:t, action:"invite_team", key:first, body:mobile, level:level})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          btn.disabled=false; btn.textContent="Send invitation";
+          if(j.ok){ var s=document.getElementById('ht-saved'); s.style.display='inline'; setTimeout(function(){ location.reload(); }, 1400); }
+          else {
+            var msgs = {already_on_team:"They're already on the team.", thats_the_owner:"That's you."};
+            err.textContent = msgs[j.error] || ("Couldn't send: " + (j.error||'unknown'));
+            err.style.display='inline';
+          }
+        })
+        .catch(function(){ btn.disabled=false; btn.textContent="Send invitation"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
       });
 
       // Invite a tenant.
