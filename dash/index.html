@@ -71,6 +71,22 @@
   .tabpane{display:none}
   .tabpane.on{display:block}
   .unsorted-note{margin:36px 0 18px;text-align:center;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+  /* The living compose box (Chip's whiteboard + the desktop grammar):
+     incomplete pieces ride as pills; completed pieces become prose. */
+  #el-stack{font-size:14.5px;line-height:2.05;color:var(--ink)}
+  .pillEl{display:inline-flex;align-items:center;gap:2px;background:var(--brand-tint);border:1.5px solid var(--brand);border-radius:99px;padding:4px 4px 4px 13px;font-size:13px;font-weight:600;color:var(--brand);cursor:pointer;margin:2px 5px 2px 0;vertical-align:middle;line-height:1.3}
+  .pillEl .px{border:0;background:none;color:var(--rust);font-size:15px;cursor:pointer;padding:0 8px;line-height:1}
+  .proseEl{cursor:pointer;border-bottom:1.5px dashed rgba(34,28,20,.22);margin-right:5px}
+  .proseEl:hover{border-bottom-color:var(--brand)}
+  .sheetWrap{position:fixed;inset:0;background:rgba(34,28,20,.38);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--card);border-radius:22px 22px 0 0;max-height:84vh;overflow:auto;width:100%;max-width:560px;padding:20px 20px 28px;box-shadow:var(--shadow)}
+  @media(min-width:600px){.sheetWrap{align-items:center;padding:24px}.sheet{border-radius:22px}}
+  .tile{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer}
+  .tile:hover{background:var(--brand-tint)}
+  .tile .tv{flex:1;font-weight:600;font-size:14.5px}
+  .tile.faded .tv{color:var(--ink-faint);font-weight:400}
+  .tile .tm{font-size:12px;color:var(--ink-faint);white-space:nowrap}
+  .sheet input[type=text],.sheet textarea{width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
 </style>
 </head>
 <body>
@@ -159,7 +175,7 @@
 
           <div id="el-pills" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:-1px;position:relative;z-index:1;padding:0 10px"></div>
           <div id="compose-box" style="background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:8px 14px;min-height:96px">
-            <div id="box-empty" style="font-size:13.5px;color:var(--ink-faint);padding:14px 2px">Tap a piece above — or Freeflow to just type.</div>
+            <div id="box-empty" style="font-size:13.5px;color:var(--ink-faint);padding:14px 2px;line-height:1.6">Tap a piece above — it drops in here as a pill. Tap the pill to fill it in; when it's complete, it becomes the actual message text. When every pill is filled, Send wakes up.</div>
             <div id="el-stack"></div>
           </div>
 
@@ -673,9 +689,32 @@
         var crEl = document.getElementById('cmp-credits');
         crEl.textContent = cr;
         crEl.style.color = cr > creditsLeft ? 'var(--rust)' : '';
+        // Send wakes only when every pill has become prose (the
+        // desktop rule: all pieces complete, at least one piece).
+        var ready = instances.length > 0 && instances.every(instComplete);
+        document.getElementById('cmp-send').disabled = !ready;
       }
-      // Chip-state sync: a chip lights while its piece is in the box;
-      // the box whispers its hint only when empty.
+      // ── The living box (the desktop grammar, Chip's whiteboard) ──
+      // Incomplete pieces ride as PILLS. Tap a pill → the editor sheet
+      // opens (Used-before tiles + type-new). A completed piece turns
+      // into its PROSE, in place — tap the prose to re-edit it.
+      function instComplete(inst){
+        if(!inst.el) return !!(inst.freeText||'').trim();
+        return (inst.el.slots_json||[]).every(function(sl){
+          if(sl.enabled === false || !sl.required) return true;
+          return !!(inst.values[sl.name]||'').trim();
+        });
+      }
+      function firstSlotNeeding(inst){
+        var slots = (inst.el && inst.el.slots_json) || [];
+        for(var i=0;i<slots.length;i++){
+          var sl = slots[i];
+          if(sl.enabled === false) continue;
+          if(sl.required && !(inst.values[sl.name]||'').trim()) return sl.name;
+        }
+        for(var j=0;j<slots.length;j++){ if(slots[j].enabled !== false) return slots[j].name; }
+        return null;
+      }
       function syncBox(){
         document.getElementById('box-empty').style.display = instances.length ? 'none' : 'block';
         document.querySelectorAll('#el-pills [data-chip]').forEach(function(b){
@@ -683,49 +722,181 @@
           b.classList.toggle('on', instances.some(function(x){ return (x.el ? x.el.id : 'free') === id; }));
         });
       }
-      // One compact LINE per piece, inside the single compose box
-      // (Chip's whiteboard): name chip + bare inputs + ×. Labels ride
-      // as placeholders/titles — no card chrome, no stacked labels.
-      function addInstance(el, focus){
-        var key = 'i'+(++seq);
-        var inst = { key:key, el:el||null, values:{}, freeText:'' };
+      function renderBox(){
+        var stack = document.getElementById('el-stack');
+        stack.innerHTML = '';
+        instances.forEach(function(inst){
+          if(instComplete(inst)){
+            var prose = inst.el
+              ? renderTemplate(inst.el.template_text, inst.values, inst.el.rules)
+              : (inst.freeText||'').trim();
+            var sp = document.createElement('span');
+            sp.className = 'proseEl';
+            sp.textContent = prose;
+            sp.title = 'Tap to edit';
+            sp.addEventListener('click', function(){ openEditor(inst, firstSlotNeeding(inst)); });
+            stack.appendChild(sp);
+            stack.appendChild(document.createTextNode(' '));
+          } else {
+            var pill = document.createElement('span');
+            pill.className = 'pillEl';
+            pill.innerHTML = esc(inst.el ? inst.el.display_name : 'Freeflow') +
+              '<button class="px" title="Remove">×</button>';
+            pill.addEventListener('click', function(ev){
+              if(ev.target.classList.contains('px')) return;
+              openEditor(inst, firstSlotNeeding(inst));
+            });
+            pill.querySelector('.px').addEventListener('click', function(ev){
+              ev.stopPropagation();
+              instances = instances.filter(function(x){ return x.key !== inst.key; });
+              renderBox(); refresh();
+            });
+            stack.appendChild(pill);
+          }
+        });
+        syncBox();
+      }
+      function addInstance(el){
+        var inst = { key:'i'+(++seq), el:el||null, values:{}, freeText:'' };
+        if(el){ (el.slots_json||[]).forEach(function(sl){ if(sl.default) inst.values[sl.name] = sl.default; }); }
         instances.push(inst);
-        if(el){
-          (el.slots_json||[]).forEach(function(sl){
-            if(sl.default) inst.values[sl.name] = sl.default;
-          });
+        renderBox(); refresh();
+      }
+
+      // ── The editor sheet — the desktop's slot picker, web-shaped ──
+      function normShort(raw){
+        var s = (raw||'').trim();
+        while(s && '.!?'.indexOf(s[s.length-1]) >= 0) s = s.slice(0,-1).replace(/\s+$/,'');
+        s = s.replace(/\s+/g,' ').toLowerCase();
+        return s ? s.charAt(0).toUpperCase()+s.slice(1) : '';
+      }
+      function ageText(iso){
+        if(!iso) return '';
+        var days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+        return days <= 0 ? 'today' : days === 1 ? 'yesterday'
+          : days < 30 ? days + 'd ago' : Math.floor(days/30) + 'mo ago';
+      }
+      function closeEditor(){
+        var w = document.getElementById('sheetWrap');
+        if(w) w.remove();
+        renderBox(); refresh();
+      }
+      function openEditor(inst, slotName){
+        var old = document.getElementById('sheetWrap'); if(old) old.remove();
+        var isFree = !inst.el;
+        var slot = null;
+        if(!isFree){
+          slot = (inst.el.slots_json||[]).find(function(s){ return s.name === slotName; });
+          if(!slot){ renderBox(); refresh(); return; }
         }
-        var line = document.createElement('div');
-        line.id = key;
-        line.style.cssText = 'display:flex;gap:7px;align-items:flex-start;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed var(--line)';
-        var name = '<span title="'+esc((el && el.config && el.config.help) || '')+'" style="font-size:12px;font-weight:600;color:var(--brand);background:var(--brand-tint);border-radius:8px;padding:6px 10px;white-space:nowrap;margin-top:2px">'+esc(el?el.display_name:'Freeflow')+'</span>';
-        var fields = '';
-        if(el){
-          var multi = (el.slots_json||[]).length > 1;
-          (el.slots_json||[]).forEach(function(sl){
-            var ph = esc(sl.placeholder || sl.label || sl.name) + (sl.required ? '' : ' (optional)');
-            fields += sl.long
-              ? '<textarea data-slot="'+esc(sl.name)+'" placeholder="'+ph+'" title="'+esc(sl.label||sl.name)+'" style="flex:1 1 100%;min-height:54px;font-size:14px;padding:8px 11px">'+esc(sl.default||'')+'</textarea>'
-              : '<input type="text" data-slot="'+esc(sl.name)+'" placeholder="'+ph+'" title="'+esc(sl.label||sl.name)+'" value="'+esc(sl.default||'')+'" style="flex:1;min-width:'+(multi?'110':'150')+'px;font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff">';
-          });
+        var isLong = isFree || !!(slot && slot.long);
+        var cur = isFree ? (inst.freeText||'') : (inst.values[slotName]||'');
+        var lib = (!isFree && inst.el.library && inst.el.library[slotName]) || [];
+
+        var wrap = document.createElement('div');
+        wrap.className = 'sheetWrap'; wrap.id = 'sheetWrap';
+        wrap.addEventListener('click', function(ev){ if(ev.target === wrap) closeEditor(); });
+        var sheet = document.createElement('div');
+        sheet.className = 'sheet';
+
+        var html = '<div style="font-family:\'Fraunces\',serif;font-size:18px;color:var(--brand);margin-bottom:4px">'+
+          (isFree ? 'Freeflow' : esc(inst.el.display_name) + ' → ' + esc(slot.label || slot.name)) + '</div>';
+        if(inst.el && inst.el.config && inst.el.config.help){
+          html += '<div style="font-size:12.5px;color:var(--ink-faint);margin-bottom:8px">'+esc(inst.el.config.help)+'</div>';
+        }
+        if(cur && !isLong){
+          html += '<div style="font-size:13px;color:var(--ink-soft);margin-bottom:6px">Currently: <strong>'+esc(cur)+'</strong></div>';
+        }
+        if(!isLong){
+          html += '<div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin:10px 0 6px">Used before</div>';
+          html += lib.length
+            ? '<div id="sheet-tiles"></div>'
+            : '<div style="font-size:13.5px;color:var(--ink-faint);margin-bottom:8px">Nothing in this slot\'s library yet — type below and it\'ll be remembered for next time.</div>';
+        }
+        html += '<div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin:14px 0 6px">'+(isLong ? 'Your words' : 'Type something new')+'</div>';
+        if(isLong){
+          html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--ink-faint);align-items:center">Insert:'+
+            '<button class="tabbtn" data-tok="{first_name|friend}" style="font-size:12px;padding:5px 11px">First name</button>'+
+            '<button class="tabbtn" data-tok="{last_name}" style="font-size:12px;padding:5px 11px">Last name</button>'+
+            '<button class="tabbtn" data-tok="{name|friend}" style="font-size:12px;padding:5px 11px">Full name</button></div>';
+          html += '<textarea id="sheet-input" style="min-height:110px" placeholder="Type as if you were texting a regular.">'+esc(cur)+'</textarea>';
         } else {
-          fields = '<textarea data-free="1" placeholder="Type as if you were texting a regular." style="flex:1 1 100%;min-height:54px;font-size:14px;padding:8px 11px"></textarea>';
+          html += '<input type="text" id="sheet-input" value="'+(lib.length ? '' : esc(cur))+'" placeholder="'+esc((slot && slot.placeholder) || '')+'">';
         }
-        line.innerHTML = name + fields +
-          '<button data-rm style="border:0;background:none;color:var(--ink-faint);font-size:17px;cursor:pointer;flex-shrink:0;margin-top:2px" title="Remove">×</button>';
-        document.getElementById('el-stack').appendChild(line);
-        line.addEventListener('input', function(ev){
-          var t = ev.target;
-          if(t.dataset.slot){ inst.values[t.dataset.slot] = t.value; }
-          if(t.dataset.free){ inst.freeText = t.value; }
-          refresh();
+        html += '<div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
+          '<button class="btn" id="sheet-use">Use this</button>'+
+          (cur ? '<button id="sheet-clear" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Clear</button>' : '')+
+          '<button id="sheet-remove" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Remove piece</button></div>';
+        sheet.innerHTML = html;
+        wrap.appendChild(sheet);
+        document.body.appendChild(wrap);
+
+        // Tiles: top 8 then a quiet Older toggle. Used-very-recently
+        // tiles fade — freshness pressure without a rule (desktop).
+        if(!isLong && lib.length){
+          var tilesBox = sheet.querySelector('#sheet-tiles');
+          var tile = function(h){
+            var days = h.last_used_at ? Math.floor((Date.now()-new Date(h.last_used_at).getTime())/86400000) : null;
+            var t = document.createElement('div');
+            t.className = 'tile' + (days !== null && days < 3 ? ' faded' : '');
+            t.innerHTML = '<span class="tv">'+esc(h.display_value||h.value)+'</span>'+
+              '<span class="tm">'+esc(ageText(h.last_used_at))+'</span>'+
+              '<span class="tm" style="color:var(--honey)">Used '+(h.use_count||1)+'×</span>';
+            t.addEventListener('click', function(){ setVal(h.display_value||h.value); });
+            return t;
+          };
+          lib.slice(0,8).forEach(function(h){ tilesBox.appendChild(tile(h)); });
+          if(lib.length > 8){
+            var more = document.createElement('button');
+            more.className = 'tabbtn';
+            more.style.cssText = 'font-size:12.5px;padding:6px 13px;margin-bottom:6px';
+            more.textContent = 'Older entries… ('+(lib.length-8)+')';
+            more.addEventListener('click', function(){
+              lib.slice(8).forEach(function(h){ tilesBox.appendChild(tile(h)); });
+              more.remove();
+            });
+            tilesBox.appendChild(more);
+          }
+        }
+
+        sheet.querySelectorAll('[data-tok]').forEach(function(b){
+          b.addEventListener('click', function(){
+            var inp = sheet.querySelector('#sheet-input');
+            var st = inp.selectionStart != null ? inp.selectionStart : inp.value.length;
+            var en = inp.selectionEnd != null ? inp.selectionEnd : st;
+            inp.value = inp.value.slice(0,st) + b.getAttribute('data-tok') + inp.value.slice(en);
+            inp.focus();
+          });
         });
-        line.querySelector('[data-rm]').addEventListener('click', function(){
-          instances = instances.filter(function(x){ return x.key !== key; });
-          line.remove(); syncBox(); refresh();
+
+        function setVal(v){
+          if(isFree){ inst.freeText = (v||'').trim(); }
+          else { inst.values[slotName] = isLong ? (v||'').trim() : normShort(v); }
+          // Auto-advance: the next unfilled required slot of this
+          // piece — else done, and the pill is prose when the sheet
+          // lifts.
+          if(!isFree){
+            var nxt = (inst.el.slots_json||[]).find(function(s){
+              return s.enabled !== false && s.required && s.name !== slotName && !(inst.values[s.name]||'').trim();
+            });
+            if(nxt){ renderBox(); refresh(); openEditor(inst, nxt.name); return; }
+          }
+          closeEditor();
+        }
+        sheet.querySelector('#sheet-use').addEventListener('click', function(){
+          setVal(sheet.querySelector('#sheet-input').value);
         });
-        if(focus !== false){ var f = line.querySelector('input,textarea'); if(f) f.focus(); }
-        syncBox(); refresh();
+        var inp0 = sheet.querySelector('#sheet-input');
+        inp0.addEventListener('keydown', function(ev){
+          if(ev.key === 'Enter' && !isLong){ ev.preventDefault(); setVal(inp0.value); }
+        });
+        var clearBtn = sheet.querySelector('#sheet-clear');
+        if(clearBtn) clearBtn.addEventListener('click', function(){ setVal(''); });
+        sheet.querySelector('#sheet-remove').addEventListener('click', function(){
+          instances = instances.filter(function(x){ return x.key !== inst.key; });
+          closeEditor();
+        });
+        if(!lib.length || isLong){ inp0.focus(); }
       }
 
       // The chip tray, perched on the box's top edge.
@@ -745,11 +916,11 @@
       fb.addEventListener('click', function(){ addInstance(null); });
       pills.appendChild(fb);
 
-      // The standing pieces arrive already on the bench: elements marked
-      // "start every message with this" pre-load on a fresh compose.
-      // Removable with one tap — suggested, never imposed.
+      // The standing pieces arrive on the bench as pills (or, when a
+      // default pre-fills them — like Hours — already as prose).
+      // Suggested, never imposed; the × is right there.
       (d.elements||[]).forEach(function(el){
-        if(el.config && el.config.default_selected) addInstance(el, false);
+        if(el.config && el.config.default_selected) addInstance(el);
       });
 
       // Send — async-first: accepted now, truth by polling.
@@ -792,7 +963,11 @@
         document.getElementById('cmp-err').style.display='none';
         if(!body){ sendErr('Build or write a message first.'); return; }
         btn.disabled = true; btn.textContent = 'Sending…';
-        var r = await api({token:t, action:'compose_send', body:body, override:override, confirmed_big:confirmedBig})
+        var r = await api({token:t, action:'compose_send', body:body, override:override, confirmed_big:confirmedBig,
+          // The library learns at send time (the desktop rule): each
+          // piece's slot values ride along for the Used-before tiles.
+          instances: instances.filter(function(x){ return x.el; })
+            .map(function(x){ return {element_id: x.el.id, slots: x.values}; })})
           .catch(function(){ return {ok:false, body:{}}; });
         var j = r.body || {};
         if(j.needs_confirmation){
