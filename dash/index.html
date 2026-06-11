@@ -78,6 +78,14 @@
   .pillEl .px{border:0;background:none;color:var(--rust);font-size:15px;cursor:pointer;padding:0 8px;line-height:1}
   .proseEl{cursor:pointer;border-bottom:1.5px dashed rgba(34,28,20,.22);margin-right:5px}
   .proseEl:hover{border-bottom-color:var(--brand)}
+  /* Drag-to-reorder: pieces lift under the pointer (mouse: just drag;
+     touch: press-and-hold ~⅓s, then drag), a caret marks the landing. */
+  .pillEl,.proseEl{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .dragging{opacity:.3}
+  .dragGhost{position:fixed;z-index:80;pointer-events:none;transform:translate(-50%,-65%) scale(1.04);opacity:.92;max-width:72vw;box-shadow:var(--shadow)}
+  .dragGhost.proseEl{display:inline-block;background:var(--card);padding:7px 12px;border-radius:11px;border:1px solid var(--line)}
+  .dropCaret{display:inline-block;width:3px;height:1.25em;background:var(--brand);border-radius:2px;vertical-align:middle;margin:0 2px;animation:caretPulse .75s ease-in-out infinite}
+  @keyframes caretPulse{0%,100%{opacity:1}50%{opacity:.25}}
   .sheetWrap{position:fixed;inset:0;background:rgba(34,28,20,.38);z-index:60;display:flex;align-items:flex-end;justify-content:center}
   .sheet{background:var(--card);border-radius:22px 22px 0 0;max-height:84vh;overflow:auto;width:100%;max-width:560px;padding:20px 20px 28px;box-shadow:var(--shadow)}
   @media(min-width:600px){.sheetWrap{align-items:center;padding:24px}.sheet{border-radius:22px}}
@@ -722,6 +730,93 @@
           b.classList.toggle('on', instances.some(function(x){ return (x.el ? x.el.id : 'free') === id; }));
         });
       }
+      // ── Drag-to-reorder: lift a piece, the caret shows the landing.
+      // Mouse drags immediately past a 6px threshold; touch needs a
+      // ~⅓s hold first so scrolling and tapping stay natural.
+      var drag = { active:false, suppressTap:false, toIndex:null, ghost:null, caret:null };
+      function placeCaret(x, y, excludeEl){
+        var stack = document.getElementById('el-stack');
+        var kids = Array.prototype.filter.call(stack.children, function(k){
+          return k.dataset && k.dataset.piece && k !== excludeEl;
+        });
+        var best = { d: Infinity, idx: kids.length };
+        kids.forEach(function(k, i){
+          var r = k.getBoundingClientRect();
+          [{px:r.left, idx:i}, {px:r.right, idx:i+1}].forEach(function(c){
+            var py = r.top + r.height/2;
+            var dd = (c.px-x)*(c.px-x) + (py-y)*(py-y)*3; // same-line gaps win
+            if(dd < best.d) best = { d: dd, idx: c.idx };
+          });
+        });
+        drag.toIndex = best.idx;
+        if(drag.caret.parentNode) drag.caret.remove();
+        if(best.idx < kids.length) stack.insertBefore(drag.caret, kids[best.idx]);
+        else stack.appendChild(drag.caret);
+      }
+      function beginDrag(elm, inst, x, y){
+        drag.active = true; drag.suppressTap = true; drag.toIndex = null;
+        elm.classList.add('dragging');
+        var g = elm.cloneNode(true);
+        g.classList.add('dragGhost');
+        g.style.left = x+'px'; g.style.top = y+'px';
+        document.body.appendChild(g);
+        drag.ghost = g;
+        drag.caret = document.createElement('span');
+        drag.caret.className = 'dropCaret';
+        if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(e){} }
+        function mv(ev){
+          g.style.left = ev.clientX+'px'; g.style.top = ev.clientY+'px';
+          placeCaret(ev.clientX, ev.clientY, elm);
+        }
+        function tm(ev){ if(drag.active) ev.preventDefault(); } // hold the page still on touch
+        function up(){
+          document.removeEventListener('pointermove', mv);
+          document.removeEventListener('pointerup', up);
+          document.removeEventListener('pointercancel', up);
+          document.removeEventListener('touchmove', tm);
+          drag.active = false;
+          if(drag.ghost) drag.ghost.remove();
+          if(drag.caret && drag.caret.parentNode) drag.caret.remove();
+          elm.classList.remove('dragging');
+          if(drag.toIndex != null){
+            var others = instances.filter(function(x){ return x.key !== inst.key; });
+            var to = Math.max(0, Math.min(drag.toIndex, others.length));
+            others.splice(to, 0, inst);
+            instances = others;
+          }
+          setTimeout(function(){ drag.suppressTap = false; }, 80);
+          renderBox(); refresh();
+        }
+        document.addEventListener('pointermove', mv);
+        document.addEventListener('pointerup', up);
+        document.addEventListener('pointercancel', up);
+        document.addEventListener('touchmove', tm, {passive:false});
+      }
+      function makeDraggable(elm, inst){
+        var sx = 0, sy = 0, holdTimer = null, started = false;
+        elm.addEventListener('pointerdown', function(ev){
+          if(ev.target.classList && ev.target.classList.contains('px')) return;
+          sx = ev.clientX; sy = ev.clientY; started = false;
+          if(ev.pointerType === 'touch'){
+            holdTimer = setTimeout(function(){
+              holdTimer = null; started = true;
+              beginDrag(elm, inst, sx, sy);
+            }, 320);
+          }
+        });
+        elm.addEventListener('pointermove', function(ev){
+          var dx = Math.abs(ev.clientX-sx), dy = Math.abs(ev.clientY-sy);
+          if(!started && ev.pointerType !== 'touch' && ev.buttons && (dx > 6 || dy > 6)){
+            started = true;
+            beginDrag(elm, inst, ev.clientX, ev.clientY);
+          }
+          if(holdTimer && (dx > 9 || dy > 9)){ clearTimeout(holdTimer); holdTimer = null; } // it's a scroll
+        });
+        ['pointerup','pointercancel','pointerleave'].forEach(function(k){
+          elm.addEventListener(k, function(){ if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; } });
+        });
+      }
+
       function renderBox(){
         var stack = document.getElementById('el-stack');
         stack.innerHTML = '';
@@ -732,25 +827,34 @@
               : (inst.freeText||'').trim();
             var sp = document.createElement('span');
             sp.className = 'proseEl';
+            sp.dataset.piece = inst.key;
             sp.textContent = prose;
-            sp.title = 'Tap to edit';
-            sp.addEventListener('click', function(){ openEditor(inst, firstSlotNeeding(inst)); });
+            sp.title = 'Tap to edit · drag to reorder';
+            sp.addEventListener('click', function(){
+              if(drag.suppressTap) return;
+              openEditor(inst, firstSlotNeeding(inst));
+            });
+            makeDraggable(sp, inst);
             stack.appendChild(sp);
             stack.appendChild(document.createTextNode(' '));
           } else {
             var pill = document.createElement('span');
             pill.className = 'pillEl';
+            pill.dataset.piece = inst.key;
             pill.innerHTML = esc(inst.el ? inst.el.display_name : 'Freeflow') +
               '<button class="px" title="Remove">×</button>';
+            pill.title = 'Tap to fill · drag to reorder';
             pill.addEventListener('click', function(ev){
-              if(ev.target.classList.contains('px')) return;
+              if(ev.target.classList.contains('px') || drag.suppressTap) return;
               openEditor(inst, firstSlotNeeding(inst));
             });
             pill.querySelector('.px').addEventListener('click', function(ev){
               ev.stopPropagation();
+              if(drag.suppressTap) return;
               instances = instances.filter(function(x){ return x.key !== inst.key; });
               renderBox(); refresh();
             });
+            makeDraggable(pill, inst);
             stack.appendChild(pill);
           }
         });
