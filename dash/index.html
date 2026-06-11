@@ -114,7 +114,7 @@
             <div class="nums" id="n-clients">&nbsp;</div>
           </div>
           <div class="meter-card">
-            <div class="lab">Messages</div>
+            <div class="lab">Message credits</div>
             <div class="meter"><i id="m-msgs" style="width:0%"></i></div>
             <div class="nums" id="n-msgs">&nbsp;</div>
           </div>
@@ -149,6 +149,35 @@
 
       <!-- ─── SEND MESSAGE ─────────────────────────────────────── -->
       <div class="tabpane" id="tab-send">
+        <div class="card" id="compose-card">
+          <h2 style="margin-bottom:4px">Send to your clients</h2>
+          <p style="font-size:14px" id="compose-to">&nbsp;</p>
+
+          <div style="margin-top:14px">
+            <div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:8px">Build your message</div>
+            <div id="el-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          </div>
+
+          <div id="el-stack" style="margin-top:6px"></div>
+
+          <div style="margin-top:16px">
+            <div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:6px">Preview</div>
+            <div id="compose-preview" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;font-size:14.5px;color:var(--ink);min-height:48px;white-space:pre-wrap">(your message appears here)</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft);margin-top:8px">
+              <span>Segments: <strong id="cmp-segs">0</strong></span>
+              <span>Credits: <strong id="cmp-credits">0</strong> of <strong id="cmp-left">—</strong> left</span>
+            </div>
+          </div>
+
+          <div id="cmp-guard" style="display:none;margin-top:14px;background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:13px 15px;font-size:13.5px;color:#6b4a12"></div>
+
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn" id="cmp-send">Send</button>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="cmp-err"></span>
+          </div>
+          <div id="cmp-progress" style="display:none;margin-top:14px;background:var(--brand-tint);border-radius:13px;padding:13px 15px;font-size:14px"></div>
+        </div>
+
         <div class="card">
           <h2 style="margin-bottom:6px">Inbox <span id="inbox-unread" style="display:none;background:var(--honey);color:#fff;font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;vertical-align:middle"></span></h2>
           <p style="font-size:14px">Replies to your number land here — and a reply is where connection begins.</p>
@@ -507,9 +536,202 @@
     document.getElementById('m-clients').style.width = Math.min(100, (cl/cm)*100) + "%";
     document.getElementById('n-clients').textContent = cl + " of " + cm;
     document.getElementById('tab-client-count').textContent = "(" + cl + ")";
-    var ms = d.messages_sent, mb = d.message_bundle || 50;
+    var ms = d.credits_used != null ? d.credits_used : d.messages_sent,
+        mb = d.credits_total || d.message_bundle || 50;
     document.getElementById('m-msgs').style.width = Math.min(100, (ms/mb)*100) + "%";
-    document.getElementById('n-msgs').textContent = ms + " of " + mb + " sent";
+    document.getElementById('n-msgs').textContent = ms + " of " + mb + " used";
+
+    // ── Compose ──────────────────────────────────────────────────
+    // Elements must out-convenience typing: one tap adds a block, slots
+    // remember their shape, the message assembles itself. Free typing
+    // stays open — elements have to EARN the choice.
+    (function initCompose(){
+      if(isStaff){ var cc = document.getElementById('compose-card'); if(cc) cc.style.display='none'; return; }
+      var instances = [];   // {key, el|null(free), values:{}, freeText}
+      var seq = 0;
+      var creditsLeft = Math.max(0, (d.credits_total||50) - (d.credits_used||0));
+      document.getElementById('compose-to').innerHTML =
+        'To: <strong>your clients</strong> · ' + (d.active_clients||0) + ' people';
+      document.getElementById('cmp-left').textContent = creditsLeft;
+
+      // Render one element's template against its slot values:
+      // [bracket groups] survive only if every {slot} inside is filled.
+      function renderTemplate(tpl, vals){
+        var out = tpl.replace(/\[([^\]]*)\]/g, function(_, group){
+          var ok = true;
+          group.replace(/\{(\w+)\}/g, function(_m, s){ if(!(vals[s]||'').trim()) ok = false; return _m; });
+          return ok ? group : '';
+        });
+        out = out.replace(/\{(\w+)\}/g, function(_, s){ return (vals[s]||'').trim(); });
+        return out.replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1').trim();
+      }
+      function assembled(){
+        var parts = [];
+        instances.forEach(function(inst){
+          if(inst.el){ var r = renderTemplate(inst.el.template_text, inst.values); if(r) parts.push(r); }
+          else if((inst.freeText||'').trim()) parts.push(inst.freeText.trim());
+        });
+        return parts.join(' ');
+      }
+      // Approximate GSM segment math (server recomputes authoritatively).
+      function segCount(text){
+        if(!text) return 0;
+        var gsm = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+        var ext = "|^€{}[]~\\\f";
+        var n = 0, ok = true;
+        for(var ch of text){ if(gsm.includes(ch)) n+=1; else if(ext.includes(ch)) n+=2; else { ok=false; break; } }
+        if(!ok){ var L=[...text].length; return L<=70?1:Math.ceil(L/67); }
+        return n<=160?1:Math.ceil(n/153);
+      }
+      function refresh(){
+        var body = assembled();
+        var full = (d.company||'') + ': ' + body;
+        document.getElementById('compose-preview').textContent = body ? full : '(your message appears here)';
+        var s = body ? segCount(full) : 0;
+        var cr = s * (d.active_clients||0);
+        document.getElementById('cmp-segs').textContent = s;
+        var crEl = document.getElementById('cmp-credits');
+        crEl.textContent = cr;
+        crEl.style.color = cr > creditsLeft ? 'var(--rust)' : '';
+      }
+      function addInstance(el){
+        var key = 'i'+(++seq);
+        var inst = { key:key, el:el||null, values:{}, freeText:'' };
+        instances.push(inst);
+        var box = document.createElement('div');
+        box.id = key;
+        box.style.cssText = 'background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-top:10px';
+        var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+          '<strong style="font-size:14px">'+esc(el?el.display_name:'Your words')+'</strong>'+
+          '<button data-rm="'+key+'" style="border:0;background:none;color:var(--ink-faint);font-size:17px;cursor:pointer" title="Remove">×</button></div>';
+        var fields = '';
+        if(el){
+          (el.slots_json||[]).forEach(function(sl){
+            fields += '<div style="margin-bottom:8px"><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px">'+
+              esc(sl.label||sl.name)+(sl.required?'':' <span style="font-weight:400;color:var(--ink-faint)">(optional)</span>')+'</label>'+
+              (sl.long
+                ? '<textarea data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" style="min-height:60px"></textarea>'
+                : '<input type="text" data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" style="width:100%;font:inherit;font-size:14.5px;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff">')+
+              '</div>';
+          });
+        } else {
+          fields = '<textarea data-free="'+key+'" placeholder="Anything — type as if you were texting a regular." style="min-height:70px"></textarea>';
+        }
+        box.innerHTML = head + fields;
+        document.getElementById('el-stack').appendChild(box);
+        box.addEventListener('input', function(ev){
+          var t = ev.target;
+          if(t.dataset.slot){ inst.values[t.dataset.slot] = t.value; }
+          if(t.dataset.free !== undefined && t.dataset.free === key){ inst.freeText = t.value; }
+          refresh();
+        });
+        box.querySelector('[data-rm]').addEventListener('click', function(){
+          instances = instances.filter(function(x){ return x.key !== key; });
+          box.remove(); refresh();
+        });
+        var f = box.querySelector('input,textarea'); if(f) f.focus();
+      }
+
+      // Pills: one per element + free type.
+      var pills = document.getElementById('el-pills');
+      (d.elements||[]).forEach(function(el){
+        var b = document.createElement('button');
+        b.className = 'tabbtn'; b.textContent = '+ ' + el.display_name;
+        b.addEventListener('click', function(){ addInstance(el); });
+        pills.appendChild(b);
+      });
+      var fb = document.createElement('button');
+      fb.className = 'tabbtn'; fb.textContent = '+ Write freely';
+      fb.addEventListener('click', function(){ addInstance(null); });
+      pills.appendChild(fb);
+
+      // Send — async-first: accepted now, truth by polling.
+      var guard = document.getElementById('cmp-guard');
+      var btn = document.getElementById('cmp-send');
+      var override = false, confirmedBig = false;
+      function sendErr(m){ var e=document.getElementById('cmp-err'); e.textContent=m; e.style.display='inline'; }
+      async function pollMine(body){
+        for(var i=0;i<10;i++){
+          var r = await api({token:t, action:'my_broadcasts'});
+          if(r.body.ok){
+            var m = (r.body.broadcasts||[]).find(function(b){
+              return b.body===body && Date.now()-new Date(b.created_at).getTime() < 5*60*1000; });
+            if(m) return m;
+          }
+          await new Promise(function(res){ setTimeout(res, 2500); });
+        }
+        return null;
+      }
+      function showProgress(b){
+        var p = document.getElementById('cmp-progress');
+        p.style.display='block';
+        p.innerHTML = '<strong>'+(b.completed_at?'Sent.':'Sending…')+'</strong> '+
+          (b.sent_count||0)+' of '+(b.recipient_count||0)+' delivered to the carrier'+
+          ((b.failed_count||0) ? ' · '+b.failed_count+' failed' : '');
+        return !!b.completed_at;
+      }
+      async function trackProgress(id){
+        for(var i=0;i<60;i++){
+          await new Promise(function(res){ setTimeout(res, 2500); });
+          var r = await api({token:t, action:'broadcast_status', key:id});
+          if(r.body.ok && showProgress(r.body.broadcast)){
+            setTimeout(function(){ location.reload(); }, 2500);
+            return;
+          }
+        }
+      }
+      btn.addEventListener('click', async function(){
+        var body = assembled();
+        document.getElementById('cmp-err').style.display='none';
+        if(!body){ sendErr('Build or write a message first.'); return; }
+        btn.disabled = true; btn.textContent = 'Sending…';
+        var r = await api({token:t, action:'compose_send', body:body, override:override, confirmed_big:confirmedBig})
+          .catch(function(){ return {ok:false, body:{}}; });
+        var j = r.body || {};
+        if(j.needs_confirmation){
+          override = true;
+          guard.style.display='block';
+          guard.innerHTML = '<strong>⚠ This reads a lot like a recent send.</strong><ul style="margin:6px 0 6px 18px;padding:0">'+
+            (j.freshness.reasons||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+
+            '<div style="font-weight:600">Freshen it up:</div><ul style="margin:4px 0 0 18px;padding:0">'+
+            (j.freshness.suggestions||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+
+            '<div style="margin-top:8px;font-size:12.5px">Edit it above, or tap <strong>Send anyway</strong>.</div>';
+          btn.disabled=false; btn.textContent='Send anyway';
+          return;
+        }
+        if(j.needs_big_confirm){
+          confirmedBig = true;
+          guard.style.display='block';
+          guard.innerHTML = '<strong>That\'s a big send — '+j.recipients+' people.</strong> Tap Send once more to confirm.';
+          btn.disabled=false; btn.textContent='Send to '+j.recipients+' people';
+          return;
+        }
+        if(j.error === 'insufficient_credits'){
+          guard.style.display='block';
+          guard.innerHTML = '<strong>Not enough credits</strong> — this send needs '+j.needed+' and you have '+j.left+'. Top up from Home, then come back.';
+          btn.disabled=false; btn.textContent='Send';
+          return;
+        }
+        if(j.duplicate){
+          guard.style.display='block';
+          guard.innerHTML = '<strong>Already sent</strong> — an identical message went out moments ago. Not re-sent.';
+          btn.textContent='Send';
+          return;
+        }
+        if(!j.ok){
+          sendErr('Couldn\'t send: '+(j.error||'unknown'));
+          btn.disabled=false; btn.textContent='Send';
+          return;
+        }
+        // Accepted — the server is sending. Poll the truth.
+        guard.style.display='none';
+        showProgress({sent_count:0, recipient_count:j.recipients, completed_at:null});
+        var found = await pollMine(body);
+        if(found){ if(!showProgress(found)) trackProgress(found.id); else setTimeout(function(){ location.reload(); }, 2500); }
+        else { sendErr('Send accepted but not visible yet — check back in a minute.'); }
+      });
+      refresh();
+    })();
 
     // Inbox.
     var ib = document.getElementById('inboxrows');
