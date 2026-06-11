@@ -103,6 +103,7 @@
         <button class="tabbtn" data-tab="send">Send</button>
         <button class="tabbtn" data-tab="inbox">Inbox <span id="tab-inbox-unread" style="font-weight:400"></span></button>
         <button class="tabbtn" data-tab="clients">Clients <span id="tab-client-count" style="font-weight:400"></span></button>
+        <button class="tabbtn" data-tab="elements">Elements</button>
         <button class="tabbtn" data-tab="profile">Profile</button>
       </div>
 
@@ -110,13 +111,13 @@
       <div class="tabpane" id="tab-home">
         <div class="meters" style="margin-bottom:20px">
           <div class="meter-card">
-            <div class="lab">Client spots</div>
-            <div class="meter"><i id="m-clients" style="width:0%"></i></div>
+            <div class="lab" id="lab-clients">Client spots</div>
+            <div class="meter" id="meter-clients"><i id="m-clients" style="width:0%"></i></div>
             <div class="nums" id="n-clients">&nbsp;</div>
           </div>
           <div class="meter-card">
-            <div class="lab">Message credits</div>
-            <div class="meter"><i id="m-msgs" style="width:0%"></i></div>
+            <div class="lab" id="lab-msgs">Message credits</div>
+            <div class="meter" id="meter-msgs"><i id="m-msgs" style="width:0%"></i></div>
             <div class="nums" id="n-msgs">&nbsp;</div>
           </div>
         </div>
@@ -166,7 +167,7 @@
             <div id="compose-preview" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;font-size:14.5px;color:var(--ink);min-height:48px;white-space:pre-wrap">(your message appears here)</div>
             <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft);margin-top:8px">
               <span>Segments: <strong id="cmp-segs">0</strong></span>
-              <span>Credits: <strong id="cmp-credits">0</strong> of <strong id="cmp-left">—</strong> left</span>
+              <span>Credits: <strong id="cmp-credits">0</strong><span id="cmp-left-wrap"> of <strong id="cmp-left">—</strong> left</span></span>
             </div>
           </div>
 
@@ -245,6 +246,19 @@
             <span class="saved" id="inv-saved">Invitation sent ✓</span>
             <span style="display:none;font-size:13.5px;color:var(--rust)" id="inv-err"></span>
           </div>
+        </div>
+      </div>
+
+      <!-- ─── ELEMENTS — the repertoire ────────────────────────── -->
+      <div class="tabpane" id="tab-elements">
+        <div class="card">
+          <h2 style="margin-bottom:6px">Your elements</h2>
+          <p style="font-size:14px">The fill-in shapes your sends are built from. Your team taps an element and types two words instead of retyping the line — same voice every day, whoever's sending.</p>
+          <p style="font-size:12.5px;color:var(--ink-faint);margin-top:8px">In a template, <strong>{slot}</strong> is a blank to fill in, and anything in <strong>[square brackets]</strong> only appears if every blank inside it is filled.</p>
+        </div>
+        <div id="el-editors"></div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
+          <button class="btn" id="el-new">+ New element</button>
         </div>
       </div>
 
@@ -391,7 +405,7 @@
   document.querySelectorAll('.tabbtn').forEach(function(b){
     b.addEventListener('click', function(){ setTab(b.getAttribute('data-tab')); });
   });
-  setTab(['home','send','inbox','clients','profile'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
+  setTab(['home','send','inbox','clients','elements','profile'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
 
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
@@ -399,16 +413,19 @@
     var d = res.body;
     var isStaff = (d.role === 'team' && d.power === 'staff');
     if(isStaff){
-      // Staff see the place; admins shape it. (Server enforces the same.)
+      // Staff play the place; admins shape it. (Server enforces the same.)
       var pb = document.querySelector('.tabbtn[data-tab="profile"]'); if(pb) pb.style.display='none';
-      if(location.hash === '#profile') setTab('home');
+      var eb = document.querySelector('.tabbtn[data-tab="elements"]'); if(eb) eb.style.display='none';
+      if(location.hash === '#profile' || location.hash === '#elements') setTab('home');
     }
     if(d.brand_colour){ applyBrand(d.brand_colour); document.getElementById('colour').value = d.brand_colour; }
     document.getElementById('headline').textContent = "Hi " + d.first_name + " — " + d.company + " is live.";
     document.getElementById('brandname').textContent = d.company;
     document.getElementById('who').textContent = d.first_name;
     document.getElementById('number').textContent = d.number;
-    document.getElementById('plan').textContent = d.plan === 'trial' ? "Starter — thanks for playing" : d.plan;
+    document.getElementById('plan').textContent =
+      d.plan === 'trial' ? "Starter — thanks for playing" :
+      d.plan === 'paid' ? "Full plan — yours" : d.plan;
 
     // Profile fields.
     document.getElementById('biz-name').value = d.company || "";
@@ -537,44 +554,98 @@
       });
     }
 
-    var cl = d.client_count, cm = d.client_limit || 5;
-    document.getElementById('m-clients').style.width = Math.min(100, (cl/cm)*100) + "%";
-    document.getElementById('n-clients').textContent = cl + " of " + cm;
+    // Meters wear the plan: a fence is only drawn where one exists.
+    var cl = d.client_count;
+    if(d.client_limit != null){
+      document.getElementById('m-clients').style.width = Math.min(100, (cl/d.client_limit)*100) + "%";
+      document.getElementById('n-clients').textContent = cl + " of " + d.client_limit;
+    } else {
+      document.getElementById('lab-clients').textContent = "Clients";
+      document.getElementById('meter-clients').style.display = 'none';
+      document.getElementById('n-clients').textContent = cl + " people";
+    }
     document.getElementById('tab-client-count').textContent = "(" + cl + ")";
-    var ms = d.credits_used != null ? d.credits_used : d.messages_sent,
-        mb = d.credits_total || d.message_bundle || 50;
-    document.getElementById('m-msgs').style.width = Math.min(100, (ms/mb)*100) + "%";
-    document.getElementById('n-msgs').textContent = ms + " of " + mb + " used";
+    var ms = d.credits_used != null ? d.credits_used : d.messages_sent;
+    if(d.credits_total != null){
+      document.getElementById('m-msgs').style.width = Math.min(100, (ms/d.credits_total)*100) + "%";
+      document.getElementById('n-msgs').textContent = ms + " of " + d.credits_total + " used";
+    } else {
+      document.getElementById('lab-msgs').textContent = "Messages";
+      document.getElementById('meter-msgs').style.display = 'none';
+      document.getElementById('n-msgs').textContent = "No cap on your plan";
+    }
 
     // ── Compose ──────────────────────────────────────────────────
     // Elements must out-convenience typing: one tap adds a block, slots
     // remember their shape, the message assembles itself. Free typing
     // stays open — elements have to EARN the choice.
     (function initCompose(){
-      if(isStaff){ var cc = document.getElementById('compose-card'); if(cc) cc.style.display='none'; return; }
+      // Staff compose too — sending is the staff's daily job (the lunch
+      // crew is staff); the server gates the same way. Authoring the
+      // elements themselves stays admin-side, in the Elements room.
       var instances = [];   // {key, el|null(free), values:{}, freeText}
       var seq = 0;
-      var creditsLeft = Math.max(0, (d.credits_total||50) - (d.credits_used||0));
+      var noCap = (d.credits_total == null);
+      var creditsLeft = noCap ? Infinity : Math.max(0, d.credits_total - (d.credits_used||0));
       document.getElementById('compose-to').innerHTML =
-        'To: <strong>your clients</strong> · ' + (d.active_clients||0) + ' people';
-      document.getElementById('cmp-left').textContent = creditsLeft;
+        'To: <strong>' + (d.audience && d.audience !== 'Clients' ? esc(d.audience) : 'your clients') + '</strong> · ' + (d.active_clients||0) + ' people';
+      if(noCap){ document.getElementById('cmp-left-wrap').style.display = 'none'; }
+      else { document.getElementById('cmp-left').textContent = creditsLeft; }
+
+      // Formatting rules — the desktop prototype's registry, ported.
+      // slot-stage rules shape a named slot's value before the template
+      // fills; output-stage rules polish the rendered line after.
+      var RULES = {
+        list_house_style: {stage:'slot', slot:'items', fn:function(s){
+          var items = (s||'').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+          if(!items.length) return '';
+          items = items.map(function(it){
+            return it.replace(/\s+&\s+/g,'/').replace(/\s+\band\b\s+/gi,'/').toLowerCase();
+          });
+          items[0] = items[0].charAt(0).toUpperCase() + items[0].slice(1);
+          return items.join(', ');
+        }},
+        en_dash_ranges: {stage:'output', fn:function(s){
+          return (s||'').replace(/(\d)\s*-\s*(?=\d)/g, '$1–');
+        }},
+        collapse_double_spaces: {stage:'output', fn:function(s){
+          return (s||'').replace(/  +/g, ' ');
+        }},
+        smart_quotes: {stage:'output', fn:function(s){
+          s = (s||'').replace(/(\w)'/g, '$1’').replace(/"/g, '”');
+          var i = s.indexOf('”'); if(i >= 0) s = s.slice(0,i) + '“' + s.slice(i+1);
+          return s;
+        }}
+      };
 
       // Render one element's template against its slot values:
       // [bracket groups] survive only if every {slot} inside is filled.
-      function renderTemplate(tpl, vals){
+      function renderTemplate(tpl, vals, ruleIds){
+        ruleIds = ruleIds || [];
+        var v = {};
+        for(var k in vals) v[k] = vals[k];
+        ruleIds.forEach(function(rid){
+          var r = RULES[rid];
+          if(r && r.stage === 'slot' && (r.slot in v)){ v[r.slot] = r.fn(v[r.slot]); }
+        });
         var out = tpl.replace(/\[([^\]]*)\]/g, function(_, group){
           var ok = true;
-          group.replace(/\{(\w+)\}/g, function(_m, s){ if(!(vals[s]||'').trim()) ok = false; return _m; });
+          group.replace(/\{(\w+)\}/g, function(_m, s){ if(!(v[s]||'').trim()) ok = false; return _m; });
           return ok ? group : '';
         });
-        out = out.replace(/\{(\w+)\}/g, function(_, s){ return (vals[s]||'').trim(); });
-        return out.replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1')
+        out = out.replace(/\{(\w+)\}/g, function(_, s){ return (v[s]||'').trim(); });
+        out = out.replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1')
           .replace(/([.!?,])\1+/g,'$1').trim();   // "Eat first.." → "Eat first."
+        ruleIds.forEach(function(rid){
+          var r = RULES[rid];
+          if(r && r.stage === 'output'){ out = r.fn(out); }
+        });
+        return out.trim();
       }
       function assembled(){
         var parts = [];
         instances.forEach(function(inst){
-          if(inst.el){ var r = renderTemplate(inst.el.template_text, inst.values); if(r) parts.push(r); }
+          if(inst.el){ var r = renderTemplate(inst.el.template_text, inst.values, inst.el.rules); if(r) parts.push(r); }
           else if((inst.freeText||'').trim()) parts.push(inst.freeText.trim());
         });
         return parts.join(' ');
@@ -600,30 +671,39 @@
         crEl.textContent = cr;
         crEl.style.color = cr > creditsLeft ? 'var(--rust)' : '';
       }
-      function addInstance(el){
+      function addInstance(el, focus){
         var key = 'i'+(++seq);
         var inst = { key:key, el:el||null, values:{}, freeText:'' };
         instances.push(inst);
+        // Slot defaults pre-fill (e.g. the standing hours line) — staff
+        // override only on unusual days.
+        if(el){
+          (el.slots_json||[]).forEach(function(sl){
+            if(sl.default) inst.values[sl.name] = sl.default;
+          });
+        }
         var box = document.createElement('div');
         box.id = key;
         box.style.cssText = 'background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-top:10px';
         var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
           '<strong style="font-size:14px">'+esc(el?el.display_name:'Your words')+'</strong>'+
           '<button data-rm="'+key+'" style="border:0;background:none;color:var(--ink-faint);font-size:17px;cursor:pointer" title="Remove">×</button></div>';
+        var tip = (el && el.config && el.config.help)
+          ? '<div style="font-size:12px;color:var(--ink-faint);margin:-4px 0 8px">'+esc(el.config.help)+'</div>' : '';
         var fields = '';
         if(el){
           (el.slots_json||[]).forEach(function(sl){
             fields += '<div style="margin-bottom:8px"><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px">'+
               esc(sl.label||sl.name)+(sl.required?'':' <span style="font-weight:400;color:var(--ink-faint)">(optional)</span>')+'</label>'+
               (sl.long
-                ? '<textarea data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" style="min-height:60px"></textarea>'
-                : '<input type="text" data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" style="width:100%;font:inherit;font-size:14.5px;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff">')+
+                ? '<textarea data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" style="min-height:60px">'+esc(sl.default||'')+'</textarea>'
+                : '<input type="text" data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" value="'+esc(sl.default||'')+'" style="width:100%;font:inherit;font-size:14.5px;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff">')+
               '</div>';
           });
         } else {
           fields = '<textarea data-free="'+key+'" placeholder="Anything — type as if you were texting a regular." style="min-height:70px"></textarea>';
         }
-        box.innerHTML = head + fields;
+        box.innerHTML = head + tip + fields;
         document.getElementById('el-stack').appendChild(box);
         box.addEventListener('input', function(ev){
           var t = ev.target;
@@ -635,7 +715,8 @@
           instances = instances.filter(function(x){ return x.key !== key; });
           box.remove(); refresh();
         });
-        var f = box.querySelector('input,textarea'); if(f) f.focus();
+        if(focus !== false){ var f = box.querySelector('input,textarea'); if(f) f.focus(); }
+        refresh();
       }
 
       // Pills: one per element + free type.
@@ -650,6 +731,13 @@
       fb.className = 'tabbtn'; fb.textContent = '+ Write freely';
       fb.addEventListener('click', function(){ addInstance(null); });
       pills.appendChild(fb);
+
+      // The standing pieces arrive already on the bench: elements marked
+      // "start every message with this" pre-load on a fresh compose.
+      // Removable with one tap — suggested, never imposed.
+      (d.elements||[]).forEach(function(el){
+        if(el.config && el.config.default_selected) addInstance(el, false);
+      });
 
       // Send — async-first: accepted now, truth by polling.
       var guard = document.getElementById('cmp-guard');
@@ -737,6 +825,125 @@
         else { sendErr('Send accepted but not visible yet — check back in a minute.'); }
       });
       refresh();
+    })();
+
+    // ── Elements room — authoring the repertoire (admins shape it) ──
+    (function initElements(){
+      if(isStaff || d.power !== 'full') return;
+      var wrap = document.getElementById('el-editors');
+      var RULE_LABELS = [
+        ['list_house_style', 'House-style list — "&" and "and" become slashes, sentence case (works on a blank named "items")'],
+        ['en_dash_ranges', 'En dash for ranges — 10-4 becomes 10–4 (the – costs extra segments)'],
+        ['collapse_double_spaces', 'Collapse double spaces'],
+        ['smart_quotes', 'Smart quotes — straight quotes become curly (costs extra segments)']
+      ];
+      var IN = 'font:inherit;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff';
+      function slotRow(s){
+        s = s || {};
+        var div = document.createElement('div');
+        div.className = 'el-slot-row';
+        div.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--canvas);border-radius:10px;padding:8px;margin-bottom:6px';
+        div.innerHTML =
+          '<input data-sf="name" placeholder="slot_name" value="'+esc(s.name||'')+'" style="flex:1;min-width:90px;'+IN+'">'+
+          '<input data-sf="label" placeholder="Label people see" value="'+esc(s.label||'')+'" style="flex:1.4;min-width:130px;'+IN+'">'+
+          '<input data-sf="placeholder" placeholder="Hint text" value="'+esc(s.placeholder||'')+'" style="flex:1.4;min-width:130px;'+IN+'">'+
+          '<input data-sf="default" placeholder="Pre-filled value" value="'+esc(s.default||'')+'" style="flex:1.2;min-width:110px;'+IN+'">'+
+          '<label style="font-size:12px;display:flex;gap:4px;align-items:center;white-space:nowrap"><input type="checkbox" data-sf="required"'+(s.required?' checked':'')+'> needed</label>'+
+          '<label style="font-size:12px;display:flex;gap:4px;align-items:center;white-space:nowrap"><input type="checkbox" data-sf="long"'+(s.long?' checked':'')+'> big box</label>'+
+          '<button data-rmslot type="button" style="border:0;background:none;color:var(--ink-faint);font-size:16px;cursor:pointer" title="Remove this blank">×</button>';
+        div.querySelector('[data-rmslot]').addEventListener('click', function(){ div.remove(); });
+        return div;
+      }
+      function editorCard(el){
+        el = el || {};
+        var cfg = el.config || {};
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.elid = el.id || '';
+        var L = 'display:block;font-size:12.5px;font-weight:600;margin-bottom:4px';
+        card.innerHTML =
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
+            '<div style="flex:1.6;min-width:170px"><label style="'+L+'">Name</label><input data-ef="display_name" value="'+esc(el.display_name||'')+'" placeholder="Soup" style="width:100%;'+IN+'"></div>'+
+            '<div style="flex:1;min-width:130px"><label style="'+L+'">Group</label><input data-ef="category" value="'+esc(el.category||'')+'" placeholder="Today\'s Offerings" style="width:100%;'+IN+'"></div>'+
+            '<div style="width:80px"><label style="'+L+'">Order</label><input data-ef="sort_order" type="number" value="'+esc(String(el.sort_order!=null?el.sort_order:0))+'" style="width:100%;'+IN+'"></div>'+
+          '</div>'+
+          '<div style="margin-bottom:12px"><label style="'+L+'">Template</label>'+
+            '<textarea data-ef="template_text" placeholder="{name}[, ${price}]." style="min-height:54px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px">'+esc(el.template_text||'')+'</textarea></div>'+
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
+            '<div style="flex:1;min-width:200px"><label style="'+L+'">What it\'s for</label><input data-ef="description" value="'+esc(el.description||'')+'" placeholder="The daily soup." style="width:100%;'+IN+'"></div>'+
+            '<div style="flex:1;min-width:200px"><label style="'+L+'">Tip for whoever\'s filling it in</label><input data-ef="help" value="'+esc(cfg.help||'')+'" placeholder="Blank = use default." style="width:100%;'+IN+'"></div>'+
+          '</div>'+
+          '<div style="margin-bottom:10px"><label style="'+L+'">Blanks to fill</label><div data-slots></div>'+
+            '<button data-addslot type="button" class="tabbtn" style="font-size:12.5px;padding:6px 14px">+ Add a blank</button></div>'+
+          '<div style="margin-bottom:12px"><label style="'+L+'">Polish</label>'+
+            RULE_LABELS.map(function(r){
+              return '<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-soft);margin-bottom:5px">'+
+                '<input type="checkbox" data-rule="'+r[0]+'"'+((el.rules||[]).indexOf(r[0])>=0?' checked':'')+' style="margin-top:3px">'+
+                '<span>'+esc(r[1])+'</span></label>';
+            }).join('')+'</div>'+
+          '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px">'+
+            '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-defsel'+(cfg.default_selected?' checked':'')+'> Start every message with this <span style="color:var(--ink-faint)">(your team can remove it)</span></label>'+
+            '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-enab'+(el.enabled!==false?' checked':'')+'> Available in the Send room</label>'+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+            '<button data-save type="button" class="btn">Save</button>'+
+            '<span class="saved" data-elsaved>Saved ✓</span>'+
+            '<span data-elerr style="display:none;font-size:13.5px;color:var(--rust)"></span>'+
+            (el.id ? '<button data-del type="button" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Delete</button>' : '')+
+          '</div>';
+        var slotsBox = card.querySelector('[data-slots]');
+        (el.slots_json||[]).forEach(function(s){ slotsBox.appendChild(slotRow(s)); });
+        card.querySelector('[data-addslot]').addEventListener('click', function(){
+          slotsBox.appendChild(slotRow(null));
+        });
+        card.querySelector('[data-save]').addEventListener('click', function(){
+          var btn = this;
+          function val(k){ var n = card.querySelector('[data-ef="'+k+'"]'); return n ? n.value.trim() : ''; }
+          var slots = [];
+          card.querySelectorAll('.el-slot-row').forEach(function(row){
+            function sv(k){ var n = row.querySelector('[data-sf="'+k+'"]'); return n ? (n.type==='checkbox' ? n.checked : n.value.trim()) : ''; }
+            if(sv('name')) slots.push({ name:sv('name'), label:sv('label'), placeholder:sv('placeholder'), default:sv('default'), required:sv('required'), long:sv('long') });
+          });
+          var rules = [];
+          card.querySelectorAll('[data-rule]').forEach(function(cb){ if(cb.checked) rules.push(cb.getAttribute('data-rule')); });
+          var payload = {
+            id: card.dataset.elid || '',
+            display_name: val('display_name'), category: val('category'),
+            sort_order: parseInt(val('sort_order')||'0',10)||0,
+            template_text: val('template_text'), description: val('description'), help: val('help'),
+            default_selected: card.querySelector('[data-defsel]').checked,
+            enabled: card.querySelector('[data-enab]').checked,
+            slots_json: slots, rules: rules
+          };
+          var errEl = card.querySelector('[data-elerr]');
+          errEl.style.display = 'none';
+          btn.disabled = true; btn.textContent = 'Saving…';
+          api({token:t, action:'upsert_element', element: payload}).then(function(r){
+            btn.disabled = false; btn.textContent = 'Save';
+            if(r.body.ok){
+              var s = card.querySelector('[data-elsaved]'); s.style.display = 'inline';
+              setTimeout(function(){ location.reload(); }, 900);
+            } else { errEl.textContent = "Couldn't save: " + (r.body.error||'unknown'); errEl.style.display = 'inline'; }
+          }).catch(function(){ btn.disabled = false; btn.textContent = 'Save'; errEl.textContent = "Couldn't reach the server."; errEl.style.display = 'inline'; });
+        });
+        var del = card.querySelector('[data-del]');
+        if(del) del.addEventListener('click', function(){
+          if(!confirm('Delete "'+(el.display_name||'this element')+'"? Unticking "Available in the Send room" keeps it (and its memory) without showing it.')) return;
+          if(!confirm('Deleting also clears what it has learned — the values it remembers. Really delete?')) return;
+          api({token:t, action:'delete_element', key: el.id}).then(function(r){
+            if(r.body.ok){ location.reload(); }
+            else alert("Couldn't delete: " + (r.body.error||'unknown'));
+          });
+        });
+        return card;
+      }
+      (d.elements_all||[]).forEach(function(el){ wrap.appendChild(editorCard(el)); });
+      document.getElementById('el-new').addEventListener('click', function(){
+        var c = editorCard(null);
+        wrap.appendChild(c);
+        c.scrollIntoView({behavior:'smooth', block:'start'});
+        var f = c.querySelector('input'); if(f) f.focus();
+      });
     })();
 
     // Inbox.
@@ -853,8 +1060,9 @@
       }).catch(function(){ btn.disabled=false; btn.textContent="Send"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
     });
 
-    // Purchases — Stripe collects, deposits, and notifies.
-    if(d.payment_links && d.payment_links.own_number && d.payment_links.top_up){
+    // Purchases — Stripe collects, deposits, and notifies. Trial only:
+    // a paid workspace has nothing left to unlock here.
+    if(d.plan === 'trial' && d.payment_links && d.payment_links.own_number && d.payment_links.top_up){
       var ref = "?client_reference_id=" + encodeURIComponent(d.workspace_id || "");
       document.getElementById('buy-number').href = d.payment_links.own_number + ref;
       document.getElementById('buy-topup').href = d.payment_links.top_up + ref;
