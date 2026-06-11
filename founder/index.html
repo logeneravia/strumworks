@@ -27,8 +27,8 @@
   .nav{display:flex;align-items:center;justify-content:space-between;height:70px}
   .brand{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-weight:600;font-size:21px;color:var(--pine)}
   .mark{width:28px;height:28px}
-  main{padding:clamp(34px,6vw,56px) 0 80px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:clamp(22px,4vw,32px);margin-top:22px}
+  main{padding:clamp(28px,5vw,48px) 0 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:clamp(22px,4vw,32px);margin-bottom:20px}
   table{width:100%;border-collapse:collapse;font-size:14.5px}
   th{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);text-align:left;font-weight:600;padding:0 12px 10px 0;border-bottom:1px solid var(--line)}
   td{padding:13px 12px 13px 0;border-bottom:1px solid rgba(34,28,20,.06);color:var(--ink)}
@@ -43,6 +43,18 @@
   .saved{display:none;font-size:13.5px;color:var(--pine);font-weight:600;margin-left:12px}
   .state{text-align:center;padding:60px 0}
   .hidden{display:none}
+  .tabbar{display:flex;gap:9px;margin:20px 0 24px;flex-wrap:wrap}
+  .tabbtn{font:inherit;font-weight:600;font-size:14px;border:1.5px solid var(--line);background:transparent;color:var(--ink-soft);border-radius:99px;padding:9px 19px;cursor:pointer;transition:.15s}
+  .tabbtn:hover{border-color:var(--pine);color:var(--pine)}
+  .tabbtn.on{background:var(--pine);border-color:var(--pine);color:#fff}
+  .tabpane{display:none}
+  .tabpane.on{display:block}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+  @media(max-width:620px){.stats{grid-template-columns:1fr}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px 22px}
+  .stat .lab{font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  .stat .num{font-family:"Fraunces",serif;font-size:32px;color:var(--pine);line-height:1.2;margin-top:4px}
+  .stat .sub{font-size:12.5px;color:var(--ink-faint)}
 </style>
 </head>
 <body>
@@ -70,60 +82,81 @@
       <span class="eyebrow">Founder console</span>
       <h1 id="headline">&nbsp;</h1>
 
-      <div class="card">
-        <h2 style="font-size:20px;margin-bottom:16px">Tenants</h2>
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr><th>Business</th><th>Admin</th><th>Number</th><th>Plan</th><th>Clients</th><th>Since</th></tr></thead>
-            <tbody id="tenantrows"></tbody>
-          </table>
+      <div class="tabbar">
+        <button class="tabbtn" data-tab="home">Home</button>
+        <button class="tabbtn" data-tab="send">Send message <span id="tab-unread" style="font-weight:400"></span></button>
+        <button class="tabbtn" data-tab="people">People <span id="tab-people-count" style="font-weight:400"></span></button>
+      </div>
+
+      <!-- ─── HOME ─────────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-home">
+        <div class="stats">
+          <div class="stat"><div class="lab">Tenants</div><div class="num" id="st-tenants">0</div><div class="sub">businesses live</div></div>
+          <div class="stat"><div class="lab">Invitations out</div><div class="num" id="st-prospects">0</div><div class="sub">awaiting their yes</div></div>
+          <div class="stat"><div class="lab">Unread replies</div><div class="num" id="st-unread">0</div><div class="sub">in the house inbox</div></div>
         </div>
-        <p id="notenants" class="hidden" style="margin-top:10px">No tenants yet — send someone to strumworks.com/start.</p>
-      </div>
 
-      <div class="card">
-        <h2 style="font-size:20px;margin-bottom:6px">House inbox <span id="inbox-unread" style="display:none;background:var(--honey);color:#fff;font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;vertical-align:middle"></span></h2>
-        <p style="font-size:14px">Whatever reaches the house number — tenants, prospects, the curious.</p>
-        <div id="inboxrows" style="margin-top:14px"></div>
-        <p id="noinbox" class="hidden" style="font-size:14.5px">Quiet for now.</p>
-        <div style="margin-top:12px"><button class="btn" style="padding:9px 16px;font-size:13px;display:none" id="inbox-markread">Mark all read</button></div>
-      </div>
-
-      <div class="card">
-        <h2 style="font-size:20px;margin-bottom:16px">People</h2>
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr><th>Name</th><th>Company</th><th>Mobile</th><th>Status</th><th>How</th><th>Since</th><th></th></tr></thead>
-            <tbody id="peoplerows"></tbody>
-          </table>
-        </div>
-        <p id="nopeople" class="hidden" style="margin-top:10px">Nobody yet.</p>
-      </div>
-
-      <div class="card">
-        <h2 style="font-size:20px;margin-bottom:6px">Invite a tenant</h2>
-        <p style="font-size:14px">Tell them it's coming, type them in, send. They get a personal text from the house number with their signup link — and nothing further if they let it rest.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;max-width:560px">
-          <div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name</label>
-            <input type="text" id="ti-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:16px">Tenants</h2>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Business</th><th>Admin</th><th>Number</th><th>Plan</th><th>Clients</th><th>Since</th></tr></thead>
+              <tbody id="tenantrows"></tbody>
+            </table>
           </div>
-          <div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
-            <input type="tel" id="ti-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
-          </div>
-        </div>
-        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-          <button class="btn" id="ti-send">Send invitation</button>
-          <span class="saved" id="ti-saved">Invitation sent ✓</span>
-          <span style="display:none;font-size:13.5px;color:var(--rust)" id="ti-err"></span>
+          <p id="notenants" class="hidden" style="margin-top:10px">No tenants yet — send someone to strumworks.com/start.</p>
         </div>
       </div>
 
-      <div class="card">
-        <h2 style="font-size:20px;margin-bottom:6px">Platform messages</h2>
-        <p style="font-size:14px">Your words, sent by the system. Edit and save — the next signup uses the new copy immediately.</p>
-        <div id="templates" style="margin-top:18px"></div>
+      <!-- ─── SEND MESSAGE ─────────────────────────────────────── -->
+      <div class="tabpane" id="tab-send">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:6px">House inbox <span id="inbox-unread" style="display:none;background:var(--honey);color:#fff;font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;vertical-align:middle"></span></h2>
+          <p style="font-size:14px">Whatever reaches the house number — tenants, prospects, the curious.</p>
+          <div id="inboxrows" style="margin-top:14px"></div>
+          <p id="noinbox" class="hidden" style="font-size:14.5px">Quiet for now.</p>
+          <div style="margin-top:12px"><button class="btn" style="padding:9px 16px;font-size:13px;display:none" id="inbox-markread">Mark all read</button></div>
+        </div>
+
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:6px">Platform messages</h2>
+          <p style="font-size:14px">Your words, sent by the system. Edit and save — the next signup uses the new copy immediately.</p>
+          <div id="templates" style="margin-top:18px"></div>
+        </div>
+      </div>
+
+      <!-- ─── PEOPLE ───────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-people">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:16px">People</h2>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Name</th><th>Company</th><th>Mobile</th><th>Status</th><th>How</th><th>Since</th><th></th></tr></thead>
+              <tbody id="peoplerows"></tbody>
+            </table>
+          </div>
+          <p id="nopeople" class="hidden" style="margin-top:10px">Nobody yet.</p>
+        </div>
+
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:6px">Invite a tenant</h2>
+          <p style="font-size:14px">Tell them it's coming, type them in, send. They get a personal text from the house number with their signup link — and nothing further if they let it rest.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;max-width:560px">
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name</label>
+              <input type="text" id="ti-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+              <input type="tel" id="ti-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+            <button class="btn" id="ti-send">Send invitation</button>
+            <span class="saved" id="ti-saved">Invitation sent ✓</span>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="ti-err"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -135,6 +168,16 @@
   function show(id){ ['loading','err','view'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
   function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
+  function setTab(k){
+    document.querySelectorAll('.tabbtn').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===k); });
+    document.querySelectorAll('.tabpane').forEach(function(p){ p.classList.toggle('on', p.id==='tab-'+k); });
+    if(location.hash !== '#'+k) history.replaceState(null, '', location.pathname + location.search + '#' + k);
+  }
+  document.querySelectorAll('.tabbtn').forEach(function(b){
+    b.addEventListener('click', function(){ setTab(b.getAttribute('data-tab')); });
+  });
+  setTab(['home','send','people'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
+
   if(!t){ show('err'); }
   else fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token:t})})
     .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
@@ -143,6 +186,16 @@
       var d = res.body;
       document.getElementById('headline').textContent = "Hello, " + d.first_name + ".";
 
+      // Stats strip — the pulse.
+      var unread = (d.inbox||[]).filter(function(m){ return !m.read_at; }).length;
+      var invitedCount = (d.people||[]).filter(function(p){ return p.status === 'invited'; }).length;
+      document.getElementById('st-tenants').textContent = (d.tenants||[]).length;
+      document.getElementById('st-prospects').textContent = invitedCount;
+      document.getElementById('st-unread').textContent = unread;
+      if(unread > 0) document.getElementById('tab-unread').textContent = "(" + unread + ")";
+      document.getElementById('tab-people-count').textContent = "(" + (d.people||[]).length + ")";
+
+      // Tenants.
       var rows = document.getElementById('tenantrows');
       if(!d.tenants.length){ document.getElementById('notenants').classList.remove('hidden'); }
       d.tenants.forEach(function(x){
@@ -154,6 +207,32 @@
         rows.appendChild(tr);
       });
 
+      // House inbox.
+      var ib = document.getElementById('inboxrows');
+      if(!d.inbox || !d.inbox.length){ document.getElementById('noinbox').classList.remove('hidden'); }
+      (d.inbox||[]).forEach(function(m){
+        var div = document.createElement('div');
+        div.style.cssText = 'padding:11px 0;border-bottom:1px solid rgba(34,28,20,.06)';
+        div.innerHTML = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">'+
+          '<span style="font-weight:'+(m.read_at?'400':'600')+'">'+(m.read_at?'':'<span style="color:var(--honey)">●</span> ')+esc(m.from_phone)+'</span>'+
+          '<span style="font-size:12.5px;color:var(--ink-faint)">'+esc((m.received_at||'').replace('T',' ').slice(0,16))+'</span></div>'+
+          '<div style="font-size:14.5px;color:var(--ink-soft);margin-top:3px">'+esc(m.body)+'</div>';
+        ib.appendChild(div);
+      });
+      if(unread > 0){
+        var ub = document.getElementById('inbox-unread');
+        ub.textContent = unread + ' new'; ub.style.display = 'inline-block';
+        var mr = document.getElementById('inbox-markread');
+        mr.style.display = 'inline-flex';
+        mr.addEventListener('click', function(){
+          mr.disabled = true;
+          fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({token:t, action:"mark_inbox_read"})})
+          .then(function(){ location.reload(); });
+        });
+      }
+
+      // Platform messages.
       var box = document.getElementById('templates');
       d.templates.forEach(function(tpl){
         var div = document.createElement('div');
@@ -181,43 +260,16 @@
         .catch(function(){ btn.disabled=false; btn.textContent="Save"; alert("Couldn't reach the server."); });
       });
 
-      // House inbox.
-      var ib = document.getElementById('inboxrows');
-      var unread = (d.inbox||[]).filter(function(m){ return !m.read_at; }).length;
-      if(!d.inbox || !d.inbox.length){ document.getElementById('noinbox').classList.remove('hidden'); }
-      (d.inbox||[]).forEach(function(m){
-        var div = document.createElement('div');
-        div.style.cssText = 'padding:11px 0;border-bottom:1px solid rgba(34,28,20,.06)';
-        div.innerHTML = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">'+
-          '<span style="font-weight:'+(m.read_at?'400':'600')+'">'+(m.read_at?'':'<span style="color:var(--honey)">●</span> ')+esc(m.from_phone)+'</span>'+
-          '<span style="font-size:12.5px;color:var(--ink-faint)">'+esc((m.received_at||'').replace('T',' ').slice(0,16))+'</span></div>'+
-          '<div style="font-size:14.5px;color:var(--ink-soft);margin-top:3px">'+esc(m.body)+'</div>';
-        ib.appendChild(div);
-      });
-      if(unread > 0){
-        var ub = document.getElementById('inbox-unread');
-        ub.textContent = unread + ' new'; ub.style.display = 'inline-block';
-        var mr = document.getElementById('inbox-markread');
-        mr.style.display = 'inline-flex';
-        mr.addEventListener('click', function(){
-          mr.disabled = true;
-          fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({token:t, action:"mark_inbox_read"})})
-          .then(function(){ location.reload(); });
-        });
-      }
-
       // People — the house roster, with Withdraw on still-invited rows.
       var prow = document.getElementById('peoplerows');
       if(!d.people || !d.people.length){ document.getElementById('nopeople').classList.remove('hidden'); }
       (d.people||[]).forEach(function(pn){
         var name = ((pn.first_name||'') + ' ' + (pn.last_name||'')).trim() || '—';
-        var tagstr = (pn.tags||[]).join(', ');
         var chip = pn.status === 'invited'
           ? '<span class="pill">invited</span>'
           : '<span class="pill" style="background:var(--pine-tint);color:var(--pine)">'+esc(pn.status)+'</span>';
         var how = pn.source==='founder_invite' ? 'your invite'
-                : pn.source==='tenant_signup' ? 'signed up' : (pn.source||tagstr);
+                : pn.source==='tenant_signup' ? 'signed up' : (pn.source||(pn.tags||[]).join(', '));
         var wd = pn.status === 'invited'
           ? '<button class="btn" style="padding:6px 13px;font-size:12.5px;background:var(--rust)" data-withdraw="'+esc(pn.id)+'">Withdraw</button>'
           : '';
@@ -257,7 +309,7 @@
           if(j.ok){
             var s=document.getElementById('ti-saved'); s.style.display='inline';
             document.getElementById('ti-first').value=''; document.getElementById('ti-mobile').value='';
-            setTimeout(function(){ s.style.display='none'; }, 3000);
+            setTimeout(function(){ location.reload(); }, 1400);
           } else {
             var msgs = {already_a_tenant:"They already have a workspace."};
             err.textContent = msgs[j.error] || ("Couldn't send: " + (j.error||'unknown'));
