@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root{
-    --canvas:#F4EDDF; --canvas-2:#EFE6D4; --card:#FFFCF6; --ink:#221C14; --ink-soft:#6B6152; --ink-faint:#988E7C;
+    --canvas:#F4EDDF; --card:#FFFCF6; --ink:#221C14; --ink-soft:#6B6152; --ink-faint:#988E7C;
     --brand:#1C4A3B; --brand-deep:#143729; --brand-tint:#E3ECE5;
     --honey:#C67A1E; --honey-soft:#E0A24A; --honey-tint:#F6E7C9; --rust:#A8472A;
     --line:rgba(34,28,20,.12);
@@ -31,12 +31,12 @@
   .nav{display:flex;align-items:center;justify-content:space-between;height:70px}
   .brand{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-weight:600;font-size:21px;color:var(--brand)}
   .mark{width:28px;height:28px}
-  main{padding:clamp(34px,6vw,60px) 0 70px}
+  main{padding:clamp(28px,5vw,48px) 0 70px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:clamp(24px,4vw,36px);margin-bottom:20px}
   .numline{font-family:"Fraunces",serif;font-size:clamp(24px,4vw,32px);color:var(--brand);margin:4px 0 2px}
   .nlabel{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--honey)}
   .planchip{display:inline-block;background:var(--honey-tint);color:#6b4a12;font-size:13px;font-weight:600;border-radius:99px;padding:6px 14px;margin-top:10px}
-  .meters{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   @media(max-width:560px){.meters{grid-template-columns:1fr}}
   .meter-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
   .meter-card .lab{font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:10px}
@@ -54,7 +54,7 @@
   td.soft{color:var(--ink-soft)}
   textarea{width:100%;font:inherit;font-size:15px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;min-height:96px;resize:vertical}
   textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
-  .btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:14.5px;border:0;border-radius:11px;padding:11px 20px;cursor:pointer;background:var(--brand);color:#fff;transition:.18s}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:600;font-size:14.5px;border:0;border-radius:11px;padding:11px 20px;cursor:pointer;background:var(--brand);color:#fff;transition:.18s}
   .btn:hover{background:var(--brand-deep)}
   .btn[disabled]{opacity:.6;cursor:wait}
   .saved{display:none;font-size:13.5px;color:var(--brand);font-weight:600;margin-left:12px}
@@ -64,6 +64,13 @@
   .next li .i{color:var(--brand);font-weight:600;flex-shrink:0}
   .state{text-align:center;padding:60px 0}
   .hidden{display:none}
+  .tabbar{display:flex;gap:9px;margin:20px 0 24px;flex-wrap:wrap}
+  .tabbtn{font:inherit;font-weight:600;font-size:14px;border:1.5px solid var(--line);background:transparent;color:var(--ink-soft);border-radius:99px;padding:9px 19px;cursor:pointer;transition:.15s}
+  .tabbtn:hover{border-color:var(--brand);color:var(--brand)}
+  .tabbtn.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .tabpane{display:none}
+  .tabpane.on{display:block}
+  .unsorted-note{margin:36px 0 18px;text-align:center;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
 </style>
 </head>
 <body>
@@ -91,86 +98,124 @@
       <span class="eyebrow">Your dashboard</span>
       <h1 id="headline">&nbsp;</h1>
 
-      <div class="card" style="margin-top:22px">
-        <div class="nlabel">Your business number</div>
-        <div class="numline" id="number">&nbsp;</div>
-        <p style="font-size:14.5px">Local, reserved, and yours — this is the number your clients text.</p>
-        <span class="planchip" id="plan">&nbsp;</span>
+      <div class="tabbar">
+        <button class="tabbtn" data-tab="home">Home</button>
+        <button class="tabbtn" data-tab="send">Send message</button>
+        <button class="tabbtn" data-tab="clients">Clients <span id="tab-client-count" style="font-weight:400"></span></button>
       </div>
 
-      <div class="card">
-        <h2 style="margin-bottom:16px">Your client door</h2>
-        <div class="door">
-          <div id="qr"></div>
-          <div class="doortext">
-            <div class="nlabel">They text</div>
-            <div class="kw" id="kw">&nbsp;</div>
-            <p>…to your number, or scan the code — their texting app opens with it ready to send. One tap and they're in, consent on file.</p>
-            <p style="color:var(--ink-faint);font-size:13px">For your counter, your window, your story.</p>
-            <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-              <button class="btn" style="width:auto;padding:10px 18px;font-size:13.5px" id="qr-download">Download QR</button>
-              <button class="btn" style="width:auto;padding:10px 18px;font-size:13.5px;display:none" id="qr-share">Share / Save to Photos</button>
+      <!-- ─── HOME ─────────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-home">
+        <div class="card">
+          <div class="nlabel">Your business number</div>
+          <div class="numline" id="number">&nbsp;</div>
+          <p style="font-size:14.5px">Local, reserved, and yours — this is the number your clients text.</p>
+          <span class="planchip" id="plan">&nbsp;</span>
+        </div>
+
+        <div class="meters" style="margin-bottom:20px">
+          <div class="meter-card">
+            <div class="lab">Client spots</div>
+            <div class="meter"><i id="m-clients" style="width:0%"></i></div>
+            <div class="nums" id="n-clients">&nbsp;</div>
+          </div>
+          <div class="meter-card">
+            <div class="lab">Messages</div>
+            <div class="meter"><i id="m-msgs" style="width:0%"></i></div>
+            <div class="nums" id="n-msgs">&nbsp;</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:14px">What's next</h2>
+          <ul class="next" style="list-style:none">
+            <li><span class="i">→</span> Your first broadcast — compose once, send warmly. <em>The next build.</em></li>
+            <li><span class="i">→</span> Your logo joining your colour.</li>
+          </ul>
+          <p style="font-size:13.5px;margin-top:14px;color:var(--ink-faint)">This dashboard is young and growing weekly — you're seeing it early, on purpose.</p>
+        </div>
+      </div>
+
+      <!-- ─── SEND MESSAGE ─────────────────────────────────────── -->
+      <div class="tabpane" id="tab-send">
+        <div class="card">
+          <h2 style="margin-bottom:6px">Inbox <span id="inbox-unread" style="display:none;background:var(--honey);color:#fff;font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;vertical-align:middle"></span></h2>
+          <p style="font-size:14px">Replies to your number land here — and a reply is where connection begins.</p>
+          <div id="inboxrows" style="margin-top:14px"></div>
+          <p id="noinbox" class="hidden" style="font-size:14.5px">No replies yet — they'll appear the moment someone writes back.</p>
+          <div style="margin-top:12px"><button class="btn" style="padding:9px 16px;font-size:13px;display:none" id="inbox-markread">Mark all read</button></div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:6px">The welcome your clients get</h2>
+          <p style="font-size:14px">Sent the moment someone joins. Your words — edit freely.</p>
+          <textarea id="cw" style="margin-top:14px"></textarea>
+          <div style="margin-top:10px"><button class="btn" id="cw-save">Save</button><span class="saved" id="cw-saved">Saved ✓</span></div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:6px">Message Strumworks</h2>
+          <p style="font-size:14px">A question, a snag, a wish — write it here. It lands with the founder, and a human answers.</p>
+          <textarea id="ms-body" style="margin-top:14px" placeholder="What's on your mind?"></textarea>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
+            <button class="btn" id="ms-send">Send</button>
+            <span class="saved" id="ms-saved">Sent — we'll be in touch ✓</span>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="ms-err"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── CLIENTS ──────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-clients">
+        <div class="card">
+          <h2 style="margin-bottom:16px">Your client door</h2>
+          <div class="door">
+            <div id="qr"></div>
+            <div class="doortext">
+              <div class="nlabel">They text</div>
+              <div class="kw" id="kw">&nbsp;</div>
+              <p>…to your number, or scan the code — their texting app opens with it ready to send. One tap and they're in, consent on file.</p>
+              <p style="color:var(--ink-faint);font-size:13px">For your counter, your window, your story.</p>
+              <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+                <button class="btn" style="padding:10px 18px;font-size:13.5px" id="qr-download">Download QR</button>
+                <button class="btn" style="padding:10px 18px;font-size:13.5px;display:none" id="qr-share">Share / Save to Photos</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="card">
-        <h2 style="margin-bottom:6px">Add a client</h2>
-        <p style="font-size:14px">Typing someone in sends them a friendly <strong>invitation</strong> from your number — they join the moment they reply DASH, and hear nothing further if they don't. Their yes is their yes.</p>
-        <div class="meters" style="margin-top:14px">
-          <div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
-            <input type="text" id="inv-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+        <div class="card">
+          <h2 style="margin-bottom:6px">Your clients</h2>
+          <p style="font-size:14px" id="clientsub">The people who've joined the conversation.</p>
+          <div style="overflow-x:auto;margin-top:14px">
+            <table><tbody id="clientrows"></tbody></table>
           </div>
-          <div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
-            <input type="tel" id="inv-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+          <p id="noclients" class="hidden" style="margin-top:12px;font-size:14.5px">No clients yet — your QR is ready when you are.</p>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:6px">Add a client</h2>
+          <p style="font-size:14px">Typing someone in sends them a friendly <strong>invitation</strong> from your number — they join the moment they reply DASH, and hear nothing further if they don't. Their yes is their yes.</p>
+          <div class="meters" style="margin-top:14px">
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
+              <input type="text" id="inv-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+              <input type="tel" id="inv-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+            <button class="btn" id="inv-send">Send invitation</button>
+            <span class="saved" id="inv-saved">Invitation sent ✓</span>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="inv-err"></span>
           </div>
         </div>
-        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-          <button class="btn" style="width:auto" id="inv-send">Send invitation</button>
-          <span class="saved" id="inv-saved">Invitation sent ✓</span>
-          <span style="display:none;font-size:13.5px;color:var(--rust)" id="inv-err"></span>
-        </div>
       </div>
 
-      <div class="meters">
-        <div class="meter-card">
-          <div class="lab">Client spots</div>
-          <div class="meter"><i id="m-clients" style="width:0%"></i></div>
-          <div class="nums" id="n-clients">&nbsp;</div>
-        </div>
-        <div class="meter-card">
-          <div class="lab">Messages</div>
-          <div class="meter"><i id="m-msgs" style="width:0%"></i></div>
-          <div class="nums" id="n-msgs">&nbsp;</div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:20px">
-        <h2 style="margin-bottom:6px">Inbox <span id="inbox-unread" style="display:none;background:var(--honey);color:#fff;font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;vertical-align:middle"></span></h2>
-        <p style="font-size:14px">Replies to your number land here — and a reply is where connection begins.</p>
-        <div id="inboxrows" style="margin-top:14px"></div>
-        <p id="noinbox" class="hidden" style="font-size:14.5px">No replies yet — they'll appear the moment someone writes back.</p>
-        <div style="margin-top:12px"><button class="btn" style="width:auto;padding:9px 16px;font-size:13px;display:none" id="inbox-markread">Mark all read</button></div>
-      </div>
-
-      <div class="card" style="margin-top:20px">
-        <h2 style="margin-bottom:6px">Your clients</h2>
-        <p style="font-size:14px" id="clientsub">The people who've joined the conversation.</p>
-        <div style="overflow-x:auto;margin-top:14px">
-          <table><tbody id="clientrows"></tbody></table>
-        </div>
-        <p id="noclients" class="hidden" style="margin-top:12px;font-size:14.5px">No clients yet — your QR is ready when you are.</p>
-      </div>
-
-      <div class="card">
-        <h2 style="margin-bottom:6px">The welcome your clients get</h2>
-        <p style="font-size:14px">Sent the moment someone joins. Your words — edit freely.</p>
-        <textarea id="cw" style="margin-top:14px"></textarea>
-        <div style="margin-top:10px"><button class="btn" id="cw-save">Save</button><span class="saved" id="cw-saved">Saved ✓</span></div>
-      </div>
+      <!-- ─── STILL FINDING THEIR ROOM ─────────────────────────── -->
+      <div class="unsorted-note">— still finding their room —</div>
 
       <div class="card">
         <h2 style="margin-bottom:6px">Your colour</h2>
@@ -198,26 +243,6 @@
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <h2 style="margin-bottom:14px">What's next</h2>
-        <ul class="next" style="list-style:none">
-          <li><span class="i">→</span> Your first broadcast — compose once, send warmly. <em>The next build.</em></li>
-          <li><span class="i">→</span> Your logo joining your colour.</li>
-        </ul>
-        <p style="font-size:13.5px;margin-top:14px;color:var(--ink-faint)">This dashboard is young and growing weekly — you're seeing it early, on purpose.</p>
-      </div>
-
-      <div class="card">
-        <h2 style="margin-bottom:6px">Message Strumworks</h2>
-        <p style="font-size:14px">A question, a snag, a wish — write it here. It lands with the founder, and a human answers.</p>
-        <textarea id="ms-body" style="margin-top:14px" placeholder="What's on your mind?"></textarea>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
-          <button class="btn" style="width:auto" id="ms-send">Send</button>
-          <span class="saved" id="ms-saved">Sent — we'll be in touch ✓</span>
-          <span style="display:none;font-size:13.5px;color:var(--rust)" id="ms-err"></span>
-        </div>
-      </div>
     </div>
   </div>
 </main>
@@ -227,16 +252,8 @@
   var t = new URLSearchParams(location.search).get('t') || "";
   function show(id){ ['loading','err','view'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
   function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-  function darken(hex, f){
-    var n = parseInt(hex.slice(1), 16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
-    function d(v){ return Math.max(0, Math.round(v*(1-f))); }
-    return '#' + ((1<<24) + (d(r)<<16) + (d(g)<<8) + d(b)).toString(16).slice(1);
-  }
-  function tint(hex){
-    var n = parseInt(hex.slice(1), 16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
-    function l(v){ return Math.round(v + (255-v)*0.86); }
-    return '#' + ((1<<24) + (l(r)<<16) + (l(g)<<8) + l(b)).toString(16).slice(1);
-  }
+  function darken(hex,f){ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; function d(v){return Math.max(0,Math.round(v*(1-f)));} return '#'+((1<<24)+(d(r)<<16)+(d(g)<<8)+d(b)).toString(16).slice(1); }
+  function tint(hex){ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; function l(v){return Math.round(v+(255-v)*0.86);} return '#'+((1<<24)+(l(r)<<16)+(l(g)<<8)+l(b)).toString(16).slice(1); }
   function applyBrand(hex){
     if(!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
     var rs = document.documentElement.style;
@@ -248,6 +265,17 @@
     return fetch(API, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); });
   }
+
+  // Tabs — hash-remembered so reloads land you back in the same room.
+  function setTab(k){
+    document.querySelectorAll('.tabbtn').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===k); });
+    document.querySelectorAll('.tabpane').forEach(function(p){ p.classList.toggle('on', p.id==='tab-'+k); });
+    if(location.hash !== '#'+k) history.replaceState(null, '', location.pathname + location.search + '#' + k);
+  }
+  document.querySelectorAll('.tabbtn').forEach(function(b){
+    b.addEventListener('click', function(){ setTab(b.getAttribute('data-tab')); });
+  });
+  setTab(['home','send','clients'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
 
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
@@ -273,6 +301,7 @@
     var cl = d.client_count, cm = d.client_limit || 5;
     document.getElementById('m-clients').style.width = Math.min(100, (cl/cm)*100) + "%";
     document.getElementById('n-clients').textContent = cl + " of " + cm;
+    document.getElementById('tab-client-count').textContent = "(" + cl + ")";
     var ms = d.messages_sent, mb = d.message_bundle || 50;
     document.getElementById('m-msgs').style.width = Math.min(100, (ms/mb)*100) + "%";
     document.getElementById('n-msgs').textContent = ms + " of " + mb + " sent";
@@ -330,8 +359,7 @@
       }).catch(function(){ btn.disabled=false; btn.textContent="Withdraw"; });
     });
 
-    // QR download + share (share opens the native sheet — Save to Photos
-    // lives there on phones).
+    // QR download + share.
     setTimeout(function(){
       var img = document.querySelector('#qr img') || document.querySelector('#qr canvas');
       if(!img) return;
@@ -374,29 +402,6 @@
       }).catch(function(){ btn.disabled=false; btn.textContent="Send invitation"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
     });
 
-    // Their welcome, their words.
-    document.getElementById('cw').value = d.client_welcome || "";
-    document.getElementById('cw-save').addEventListener('click', function(){
-      var btn = this, body = document.getElementById('cw').value.trim();
-      if(!body) return alert("The welcome can't be empty.");
-      btn.disabled = true; btn.textContent = "Saving…";
-      api({token:t, action:"update_client_welcome", body:body}).then(function(r){
-        btn.disabled = false; btn.textContent = "Save";
-        if(r.body.ok){ var s=document.getElementById('cw-saved'); s.style.display='inline'; setTimeout(function(){s.style.display='none';},2500); }
-        else alert("Save failed: " + (r.body.error||'unknown'));
-      });
-    });
-
-    // Purchases — Stripe collects, deposits, and notifies. The card stays
-    // hidden until the payment links exist (lights up the moment the
-    // founder's Stripe key is wired — no dead doors).
-    if(d.payment_links && d.payment_links.own_number && d.payment_links.top_up){
-      var ref = "?client_reference_id=" + encodeURIComponent(d.workspace_id || "");
-      document.getElementById('buy-number').href = d.payment_links.own_number + ref;
-      document.getElementById('buy-topup').href = d.payment_links.top_up + ref;
-      document.getElementById('yours').classList.remove('hidden');
-    }
-
     // Message Strumworks.
     document.getElementById('ms-send').addEventListener('click', function(){
       var btn=this, body=document.getElementById('ms-body').value.trim(),
@@ -413,6 +418,14 @@
         } else { err.textContent="Couldn't send: "+(r.body.error||'unknown'); err.style.display='inline'; }
       }).catch(function(){ btn.disabled=false; btn.textContent="Send"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
     });
+
+    // Purchases — Stripe collects, deposits, and notifies.
+    if(d.payment_links && d.payment_links.own_number && d.payment_links.top_up){
+      var ref = "?client_reference_id=" + encodeURIComponent(d.workspace_id || "");
+      document.getElementById('buy-number').href = d.payment_links.own_number + ref;
+      document.getElementById('buy-topup').href = d.payment_links.top_up + ref;
+      document.getElementById('yours').classList.remove('hidden');
+    }
 
     // Their colour.
     document.getElementById('colour').addEventListener('input', function(){ applyBrand(this.value); });
