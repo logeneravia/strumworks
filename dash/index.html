@@ -102,17 +102,11 @@
         <button class="tabbtn" data-tab="home">Home</button>
         <button class="tabbtn" data-tab="send">Send message</button>
         <button class="tabbtn" data-tab="clients">Clients <span id="tab-client-count" style="font-weight:400"></span></button>
+        <button class="tabbtn" data-tab="profile">Profile</button>
       </div>
 
       <!-- ─── HOME ─────────────────────────────────────────────── -->
       <div class="tabpane" id="tab-home">
-        <div class="card">
-          <div class="nlabel">Your business number</div>
-          <div class="numline" id="number">&nbsp;</div>
-          <p style="font-size:14.5px">Local, reserved, and yours — this is the number your clients text.</p>
-          <span class="planchip" id="plan">&nbsp;</span>
-        </div>
-
         <div class="meters" style="margin-bottom:20px">
           <div class="meter-card">
             <div class="lab">Client spots</div>
@@ -231,16 +225,66 @@
         </div>
       </div>
 
-      <!-- ─── STILL FINDING THEIR ROOM ─────────────────────────── -->
-      <div class="unsorted-note">— still finding their room —</div>
+      <!-- ─── PROFILE ──────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-profile">
+        <div class="card">
+          <h2 style="margin-bottom:16px">Your business</h2>
+          <div style="margin-bottom:18px">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Business name</label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <input type="text" id="biz-name" style="flex:1;min-width:200px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+              <button class="btn" id="biz-save" style="width:auto">Save</button>
+              <span class="saved" id="biz-saved">Saved ✓</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--ink-faint);margin-top:5px">Leads every text you send — change it and your messages change with it.</div>
+          </div>
+          <div class="nlabel">Your business number</div>
+          <div class="numline" id="number">&nbsp;</div>
+          <p style="font-size:14.5px">Local, reserved, and yours — this is the number your clients text.</p>
+          <span class="planchip" id="plan">&nbsp;</span>
+        </div>
 
-      <div class="card">
-        <h2 style="margin-bottom:6px">Your colour</h2>
-        <p style="font-size:14px">Pick the colour your place is known by — your dashboard wears it now, and everything your clients see will wear it too.</p>
-        <div class="colour-row" style="margin-top:14px">
-          <input type="color" id="colour" value="#1C4A3B">
-          <button class="btn" id="colour-save">Save colour</button>
-          <span class="saved" id="colour-saved">Saved ✓</span>
+        <div class="card">
+          <h2 style="margin-bottom:16px">Your contact details</h2>
+          <div style="margin-bottom:18px">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Email</label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <input type="email" id="adm-email" style="flex:1;min-width:200px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+              <button class="btn" id="adm-email-save" style="width:auto">Save</button>
+              <span class="saved" id="adm-email-saved">Saved ✓</span>
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+            <div style="font-family:'Fraunces',serif;font-size:19px;color:var(--ink)" id="adm-mobile">&nbsp;</div>
+            <div style="font-size:12.5px;color:var(--ink-faint);margin-top:4px">Your mobile is your key — it's how DASH knows you. Need it changed? Message Strumworks and a human will move it safely.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:6px">Your logo</h2>
+          <p style="font-size:14px">It joins your colour on everything your clients see. PNG, JPEG, or WebP — up to 500 KB.</p>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:16px;flex-wrap:wrap">
+            <div id="logo-preview" style="width:84px;height:84px;border-radius:18px;border:1.5px dashed var(--line);background:#fff;display:grid;place-items:center;font-size:11px;color:var(--ink-faint);overflow:hidden">none yet</div>
+            <div>
+              <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" style="font-size:13.5px">
+              <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
+                <button class="btn" id="logo-upload" style="width:auto">Upload</button>
+                <span class="saved" id="logo-saved">Uploaded ✓</span>
+                <span style="display:none;font-size:13.5px;color:var(--rust)" id="logo-err"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:6px">Your colour</h2>
+          <p style="font-size:14px">Pick the colour your place is known by — your dashboard wears it now, and everything your clients see will wear it too.</p>
+          <div class="colour-row" style="margin-top:14px">
+            <input type="color" id="colour" value="#1C4A3B">
+            <button class="btn" id="colour-save">Save colour</button>
+            <span class="saved" id="colour-saved">Saved ✓</span>
+          </div>
         </div>
       </div>
 
@@ -276,7 +320,7 @@
   document.querySelectorAll('.tabbtn').forEach(function(b){
     b.addEventListener('click', function(){ setTab(b.getAttribute('data-tab')); });
   });
-  setTab(['home','send','clients'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
+  setTab(['home','send','clients','profile'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
 
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
@@ -288,6 +332,58 @@
     document.getElementById('who').textContent = d.first_name;
     document.getElementById('number').textContent = d.number;
     document.getElementById('plan').textContent = d.plan === 'trial' ? "Starter — thanks for playing" : d.plan;
+
+    // Profile fields.
+    document.getElementById('biz-name').value = d.company || "";
+    document.getElementById('adm-email').value = d.admin_email || "";
+    document.getElementById('adm-mobile').textContent = d.admin_mobile || "—";
+    if(d.logo){
+      var lp = document.getElementById('logo-preview');
+      lp.innerHTML = '<img src="'+esc(d.logo)+'?v='+Date.now()+'" style="width:100%;height:100%;object-fit:contain">';
+      var brandEl = document.querySelector('.brand');
+      var mark = brandEl.querySelector('.mark');
+      if(mark){ mark.outerHTML = '<img src="'+esc(d.logo)+'?v='+Date.now()+'" style="width:28px;height:28px;border-radius:7px;object-fit:contain">'; }
+    }
+
+    // Business name.
+    document.getElementById('biz-save').addEventListener('click', function(){
+      var btn=this, name=document.getElementById('biz-name').value.trim();
+      if(!name) return alert("The business needs a name.");
+      btn.disabled=true; btn.textContent="Saving…";
+      api({token:t, action:"update_business_name", body:name}).then(function(r){
+        if(r.body.ok){ location.reload(); }
+        else { btn.disabled=false; btn.textContent="Save"; alert("Save failed: "+(r.body.error||'unknown')); }
+      });
+    });
+
+    // Email.
+    document.getElementById('adm-email-save').addEventListener('click', function(){
+      var btn=this, email=document.getElementById('adm-email').value.trim();
+      btn.disabled=true; btn.textContent="Saving…";
+      api({token:t, action:"update_admin_email", body:email}).then(function(r){
+        btn.disabled=false; btn.textContent="Save";
+        if(r.body.ok){ var s=document.getElementById('adm-email-saved'); s.style.display='inline'; setTimeout(function(){s.style.display='none';},2500); }
+        else alert("Save failed: "+(r.body.error||'unknown'));
+      });
+    });
+
+    // Logo upload.
+    document.getElementById('logo-upload').addEventListener('click', function(){
+      var btn=this, f=document.getElementById('logo-file').files[0],
+          err=document.getElementById('logo-err');
+      err.style.display='none';
+      if(!f){ err.textContent="Choose an image first."; err.style.display='inline'; return; }
+      if(f.size > 500*1024){ err.textContent="That one's over 500 KB — a smaller version will do nicely."; err.style.display='inline'; return; }
+      btn.disabled=true; btn.textContent="Uploading…";
+      var rd = new FileReader();
+      rd.onload = function(){
+        api({token:t, action:"upload_logo", body: rd.result}).then(function(r){
+          if(r.body.ok){ location.reload(); }
+          else { btn.disabled=false; btn.textContent="Upload"; err.textContent="Upload failed: "+(r.body.error||'unknown'); err.style.display='inline'; }
+        }).catch(function(){ btn.disabled=false; btn.textContent="Upload"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
+      };
+      rd.readAsDataURL(f);
+    });
 
     // The client door.
     if(d.join_keyword && d.number_e164){
