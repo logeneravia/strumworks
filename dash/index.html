@@ -413,10 +413,11 @@
     var d = res.body;
     var isStaff = (d.role === 'team' && d.power === 'staff');
     if(isStaff){
-      // Staff play the place; admins shape it. (Server enforces the same.)
-      var pb = document.querySelector('.tabbtn[data-tab="profile"]'); if(pb) pb.style.display='none';
-      var eb = document.querySelector('.tabbtn[data-tab="elements"]'); if(eb) eb.style.display='none';
-      if(location.hash === '#profile' || location.hash === '#elements') setTab('home');
+      // The old Sunworks contract, kept: staff get the compose screen,
+      // full stop. No tabs, no other rooms — and the server ships a
+      // staff token nothing else anyway, so there's nothing to peek at.
+      var tb = document.querySelector('.tabbar'); if(tb) tb.style.display='none';
+      setTab('send');
     }
     if(d.brand_colour){ applyBrand(d.brand_colour); document.getElementById('colour').value = d.brand_colour; }
     document.getElementById('headline').textContent = "Hi " + d.first_name + " — " + d.company + " is live.";
