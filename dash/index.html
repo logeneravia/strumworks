@@ -205,7 +205,18 @@
           <li><span class="i">→</span> Your first broadcast — compose once, send warmly. <em>The next build.</em></li>
           <li><span class="i">→</span> Your logo joining your colour.</li>
         </ul>
-        <p style="font-size:13.5px;margin-top:14px;color:var(--ink-faint)">This dashboard is young and growing weekly — you're seeing it early, on purpose. Reply to any Strum text and a human reads it.</p>
+        <p style="font-size:13.5px;margin-top:14px;color:var(--ink-faint)">This dashboard is young and growing weekly — you're seeing it early, on purpose.</p>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:6px">Message Strumworks</h2>
+        <p style="font-size:14px">A question, a snag, a wish — write it here. It lands with the founder, and a human answers.</p>
+        <textarea id="ms-body" style="margin-top:14px" placeholder="What's on your mind?"></textarea>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:12px">
+          <button class="btn" style="width:auto" id="ms-send">Send</button>
+          <span class="saved" id="ms-saved">Sent — we'll be in touch ✓</span>
+          <span style="display:none;font-size:13.5px;color:var(--rust)" id="ms-err"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -385,6 +396,23 @@
       document.getElementById('buy-topup').href = d.payment_links.top_up + ref;
       document.getElementById('yours').classList.remove('hidden');
     }
+
+    // Message Strumworks.
+    document.getElementById('ms-send').addEventListener('click', function(){
+      var btn=this, body=document.getElementById('ms-body').value.trim(),
+          err=document.getElementById('ms-err');
+      err.style.display='none';
+      if(!body){ err.textContent="Write something first."; err.style.display='inline'; return; }
+      btn.disabled=true; btn.textContent="Sending…";
+      api({token:t, action:"message_strum", body:body}).then(function(r){
+        btn.disabled=false; btn.textContent="Send";
+        if(r.body.ok){
+          document.getElementById('ms-body').value='';
+          var s=document.getElementById('ms-saved'); s.style.display='inline';
+          setTimeout(function(){ s.style.display='none'; }, 3500);
+        } else { err.textContent="Couldn't send: "+(r.body.error||'unknown'); err.style.display='inline'; }
+      }).catch(function(){ btn.disabled=false; btn.textContent="Send"; err.textContent="Couldn't reach the server."; err.style.display='inline'; });
+    });
 
     // Their colour.
     document.getElementById('colour').addEventListener('input', function(){ applyBrand(this.value); });
