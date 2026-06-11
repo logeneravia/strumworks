@@ -568,7 +568,8 @@
           return ok ? group : '';
         });
         out = out.replace(/\{(\w+)\}/g, function(_, s){ return (vals[s]||'').trim(); });
-        return out.replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1').trim();
+        return out.replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1')
+          .replace(/([.!?,])\1+/g,'$1').trim();   // "Eat first.." → "Eat first."
       }
       function assembled(){
         var parts = [];
