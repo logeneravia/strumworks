@@ -238,6 +238,15 @@
             </div>
             <div style="font-size:12.5px;color:var(--ink-faint);margin-top:5px">Leads every text you send — change it and your messages change with it.</div>
           </div>
+          <div style="margin-bottom:18px">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">City / location</label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <input type="text" id="biz-city" placeholder="Red Deer, Alberta" style="flex:1;min-width:200px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+              <button class="btn" id="city-save" style="width:auto">Save</button>
+              <span class="saved" id="city-saved">Saved ✓</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--ink-faint);margin-top:5px">Where your people are — soon we'll surface local happenings worth sharing with them.</div>
+          </div>
           <div class="nlabel">Your business number</div>
           <div class="numline" id="number">&nbsp;</div>
           <p style="font-size:14.5px">Local, reserved, and yours — this is the number your clients text.</p>
@@ -344,6 +353,20 @@
       var mark = brandEl.querySelector('.mark');
       if(mark){ mark.outerHTML = '<img src="'+esc(d.logo)+'?v='+Date.now()+'" style="width:28px;height:28px;border-radius:7px;object-fit:contain">'; }
     }
+
+    document.getElementById('biz-city').value = d.city || "";
+
+    // City.
+    document.getElementById('city-save').addEventListener('click', function(){
+      var btn=this, city=document.getElementById('biz-city').value.trim();
+      if(!city) return alert("Where's home for the business?");
+      btn.disabled=true; btn.textContent="Saving…";
+      api({token:t, action:"update_city", body:city}).then(function(r){
+        btn.disabled=false; btn.textContent="Save";
+        if(r.body.ok){ var s=document.getElementById('city-saved'); s.style.display='inline'; setTimeout(function(){s.style.display='none';},2500); }
+        else alert("Save failed: "+(r.body.error||'unknown'));
+      });
+    });
 
     // Business name.
     document.getElementById('biz-save').addEventListener('click', function(){
