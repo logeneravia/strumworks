@@ -93,7 +93,7 @@
         <h2 style="font-size:20px;margin-bottom:16px">People</h2>
         <div style="overflow-x:auto">
           <table>
-            <thead><tr><th>Name</th><th>Mobile</th><th>Status</th><th>How</th><th>Since</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Company</th><th>Mobile</th><th>Status</th><th>How</th><th>Since</th><th></th></tr></thead>
             <tbody id="peoplerows"></tbody>
           </table>
         </div>
@@ -222,7 +222,9 @@
           ? '<button class="btn" style="padding:6px 13px;font-size:12.5px;background:var(--rust)" data-withdraw="'+esc(pn.id)+'">Withdraw</button>'
           : '';
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td><strong>'+esc(name)+'</strong></td><td class="soft">'+esc(pn.phone)+'</td>'+
+        tr.innerHTML = '<td><strong>'+esc(name)+'</strong></td>'+
+          '<td>'+(pn.company ? esc(pn.company) : '<span class="soft" style="color:var(--ink-faint)">—</span>')+'</td>'+
+          '<td class="soft">'+esc(pn.phone)+'</td>'+
           '<td>'+chip+'</td><td class="soft">'+esc(how)+'</td>'+
           '<td class="soft">'+esc((pn.created_at||'').slice(0,10))+'</td><td>'+wd+'</td>';
         prow.appendChild(tr);
