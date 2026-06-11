@@ -151,31 +151,31 @@
 
       <!-- ─── SEND MESSAGE ─────────────────────────────────────── -->
       <div class="tabpane" id="tab-send">
+        <!-- Chip's whiteboard, 2026-06-11: one box. Chips perch on its
+             edge; tapped chips drop a compact fill-in line INSIDE it;
+             preview band beneath; Send bottom-right. Phone-shaped. -->
         <div class="card" id="compose-card">
-          <h2 style="margin-bottom:4px">Send to your clients</h2>
-          <p style="font-size:14px" id="compose-to">&nbsp;</p>
+          <h2 style="margin-bottom:12px;font-size:18px" id="compose-to">&nbsp;</h2>
 
-          <div style="margin-top:14px">
-            <div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:8px">Build your message</div>
-            <div id="el-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          <div id="el-pills" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:-1px;position:relative;z-index:1;padding:0 10px"></div>
+          <div id="compose-box" style="background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:8px 14px;min-height:96px">
+            <div id="box-empty" style="font-size:13.5px;color:var(--ink-faint);padding:14px 2px">Tap a piece above — or Freeflow to just type.</div>
+            <div id="el-stack"></div>
           </div>
 
-          <div id="el-stack" style="margin-top:6px"></div>
-
-          <div style="margin-top:16px">
-            <div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:6px">Preview</div>
-            <div id="compose-preview" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;font-size:14.5px;color:var(--ink);min-height:48px;white-space:pre-wrap">(your message appears here)</div>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft);margin-top:8px">
-              <span>Segments: <strong id="cmp-segs">0</strong></span>
-              <span>Credits: <strong id="cmp-credits">0</strong><span id="cmp-left-wrap"> of <strong id="cmp-left">—</strong> left</span></span>
+          <div style="margin-top:14px">
+            <div id="compose-preview" style="background:var(--brand-tint);border-radius:14px;padding:13px 15px;font-size:14.5px;color:var(--ink);min-height:48px;white-space:pre-wrap">(your message appears here)</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-faint);margin-top:6px;justify-content:flex-end">
+              <span><strong id="cmp-segs">0</strong> segments</span>
+              <span><strong id="cmp-credits">0</strong> credits<span id="cmp-left-wrap"> · <strong id="cmp-left">—</strong> left</span></span>
             </div>
           </div>
 
           <div id="cmp-guard" style="display:none;margin-top:14px;background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:13px 15px;font-size:13.5px;color:#6b4a12"></div>
 
-          <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <button class="btn" id="cmp-send">Send</button>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end">
             <span style="display:none;font-size:13.5px;color:var(--rust)" id="cmp-err"></span>
+            <button class="btn" id="cmp-send" style="padding:12px 34px;font-size:15.5px">Send</button>
           </div>
           <div id="cmp-progress" style="display:none;margin-top:14px;background:var(--brand-tint);border-radius:13px;padding:13px 15px;font-size:14px"></div>
         </div>
@@ -414,9 +414,11 @@
     var isStaff = (d.role === 'team' && d.power === 'staff');
     if(isStaff){
       // The old Sunworks contract, kept: staff get the compose screen,
-      // full stop. No tabs, no other rooms — and the server ships a
-      // staff token nothing else anyway, so there's nothing to peek at.
+      // full stop. No tabs, no other rooms, no greeting furniture — and
+      // the server ships a staff token nothing else anyway.
       var tb = document.querySelector('.tabbar'); if(tb) tb.style.display='none';
+      var ey = document.querySelector('#view .eyebrow'); if(ey) ey.style.display='none';
+      var hl = document.getElementById('headline'); if(hl) hl.style.display='none';
       setTab('send');
     }
     if(d.brand_colour){ applyBrand(d.brand_colour); document.getElementById('colour').value = d.brand_colour; }
@@ -589,7 +591,7 @@
       var noCap = (d.credits_total == null);
       var creditsLeft = noCap ? Infinity : Math.max(0, d.credits_total - (d.credits_used||0));
       document.getElementById('compose-to').innerHTML =
-        'To: <strong>' + (d.audience && d.audience !== 'Clients' ? esc(d.audience) : 'your clients') + '</strong> · ' + (d.active_clients||0) + ' people';
+        'Sending to <strong>' + (d.audience && d.audience !== 'Clients' ? esc(d.audience) : 'your clients') + '</strong> : ' + (d.active_clients||0);
       if(noCap){ document.getElementById('cmp-left-wrap').style.display = 'none'; }
       else { document.getElementById('cmp-left').textContent = creditsLeft; }
 
@@ -672,64 +674,74 @@
         crEl.textContent = cr;
         crEl.style.color = cr > creditsLeft ? 'var(--rust)' : '';
       }
+      // Chip-state sync: a chip lights while its piece is in the box;
+      // the box whispers its hint only when empty.
+      function syncBox(){
+        document.getElementById('box-empty').style.display = instances.length ? 'none' : 'block';
+        document.querySelectorAll('#el-pills [data-chip]').forEach(function(b){
+          var id = b.getAttribute('data-chip');
+          b.classList.toggle('on', instances.some(function(x){ return (x.el ? x.el.id : 'free') === id; }));
+        });
+      }
+      // One compact LINE per piece, inside the single compose box
+      // (Chip's whiteboard): name chip + bare inputs + ×. Labels ride
+      // as placeholders/titles — no card chrome, no stacked labels.
       function addInstance(el, focus){
         var key = 'i'+(++seq);
         var inst = { key:key, el:el||null, values:{}, freeText:'' };
         instances.push(inst);
-        // Slot defaults pre-fill (e.g. the standing hours line) — staff
-        // override only on unusual days.
         if(el){
           (el.slots_json||[]).forEach(function(sl){
             if(sl.default) inst.values[sl.name] = sl.default;
           });
         }
-        var box = document.createElement('div');
-        box.id = key;
-        box.style.cssText = 'background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-top:10px';
-        var head = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-          '<strong style="font-size:14px">'+esc(el?el.display_name:'Your words')+'</strong>'+
-          '<button data-rm="'+key+'" style="border:0;background:none;color:var(--ink-faint);font-size:17px;cursor:pointer" title="Remove">×</button></div>';
-        var tip = (el && el.config && el.config.help)
-          ? '<div style="font-size:12px;color:var(--ink-faint);margin:-4px 0 8px">'+esc(el.config.help)+'</div>' : '';
+        var line = document.createElement('div');
+        line.id = key;
+        line.style.cssText = 'display:flex;gap:7px;align-items:flex-start;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed var(--line)';
+        var name = '<span title="'+esc((el && el.config && el.config.help) || '')+'" style="font-size:12px;font-weight:600;color:var(--brand);background:var(--brand-tint);border-radius:8px;padding:6px 10px;white-space:nowrap;margin-top:2px">'+esc(el?el.display_name:'Freeflow')+'</span>';
         var fields = '';
         if(el){
+          var multi = (el.slots_json||[]).length > 1;
           (el.slots_json||[]).forEach(function(sl){
-            fields += '<div style="margin-bottom:8px"><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px">'+
-              esc(sl.label||sl.name)+(sl.required?'':' <span style="font-weight:400;color:var(--ink-faint)">(optional)</span>')+'</label>'+
-              (sl.long
-                ? '<textarea data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" style="min-height:60px">'+esc(sl.default||'')+'</textarea>'
-                : '<input type="text" data-slot="'+esc(sl.name)+'" data-inst="'+key+'" placeholder="'+esc(sl.placeholder||'')+'" value="'+esc(sl.default||'')+'" style="width:100%;font:inherit;font-size:14.5px;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff">')+
-              '</div>';
+            var ph = esc(sl.placeholder || sl.label || sl.name) + (sl.required ? '' : ' (optional)');
+            fields += sl.long
+              ? '<textarea data-slot="'+esc(sl.name)+'" placeholder="'+ph+'" title="'+esc(sl.label||sl.name)+'" style="flex:1 1 100%;min-height:54px;font-size:14px;padding:8px 11px">'+esc(sl.default||'')+'</textarea>'
+              : '<input type="text" data-slot="'+esc(sl.name)+'" placeholder="'+ph+'" title="'+esc(sl.label||sl.name)+'" value="'+esc(sl.default||'')+'" style="flex:1;min-width:'+(multi?'110':'150')+'px;font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;background:#fff">';
           });
         } else {
-          fields = '<textarea data-free="'+key+'" placeholder="Anything — type as if you were texting a regular." style="min-height:70px"></textarea>';
+          fields = '<textarea data-free="1" placeholder="Type as if you were texting a regular." style="flex:1 1 100%;min-height:54px;font-size:14px;padding:8px 11px"></textarea>';
         }
-        box.innerHTML = head + tip + fields;
-        document.getElementById('el-stack').appendChild(box);
-        box.addEventListener('input', function(ev){
+        line.innerHTML = name + fields +
+          '<button data-rm style="border:0;background:none;color:var(--ink-faint);font-size:17px;cursor:pointer;flex-shrink:0;margin-top:2px" title="Remove">×</button>';
+        document.getElementById('el-stack').appendChild(line);
+        line.addEventListener('input', function(ev){
           var t = ev.target;
           if(t.dataset.slot){ inst.values[t.dataset.slot] = t.value; }
-          if(t.dataset.free !== undefined && t.dataset.free === key){ inst.freeText = t.value; }
+          if(t.dataset.free){ inst.freeText = t.value; }
           refresh();
         });
-        box.querySelector('[data-rm]').addEventListener('click', function(){
+        line.querySelector('[data-rm]').addEventListener('click', function(){
           instances = instances.filter(function(x){ return x.key !== key; });
-          box.remove(); refresh();
+          line.remove(); syncBox(); refresh();
         });
-        if(focus !== false){ var f = box.querySelector('input,textarea'); if(f) f.focus(); }
-        refresh();
+        if(focus !== false){ var f = line.querySelector('input,textarea'); if(f) f.focus(); }
+        syncBox(); refresh();
       }
 
-      // Pills: one per element + free type.
+      // The chip tray, perched on the box's top edge.
       var pills = document.getElementById('el-pills');
       (d.elements||[]).forEach(function(el){
         var b = document.createElement('button');
-        b.className = 'tabbtn'; b.textContent = '+ ' + el.display_name;
+        b.className = 'tabbtn'; b.textContent = el.display_name;
+        b.setAttribute('data-chip', el.id);
+        b.style.cssText = 'font-size:12.5px;padding:7px 14px;background:var(--card)';
         b.addEventListener('click', function(){ addInstance(el); });
         pills.appendChild(b);
       });
       var fb = document.createElement('button');
-      fb.className = 'tabbtn'; fb.textContent = '+ Write freely';
+      fb.className = 'tabbtn'; fb.textContent = 'Freeflow';
+      fb.setAttribute('data-chip', 'free');
+      fb.style.cssText = 'font-size:12.5px;padding:7px 14px;background:var(--card)';
       fb.addEventListener('click', function(){ addInstance(null); });
       pills.appendChild(fb);
 
