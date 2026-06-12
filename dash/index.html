@@ -213,6 +213,12 @@
           <div id="cmp-progress" style="display:none;margin-top:14px;background:var(--brand-tint);border-radius:13px;padding:13px 15px;font-size:14px"></div>
         </div>
 
+        <div class="card hidden" id="recent-card">
+          <h2 style="margin-bottom:6px">Recent sends</h2>
+          <p style="font-size:14px">How the last ones landed — tap a row for the full message.</p>
+          <div id="recent-rows" style="margin-top:12px"></div>
+        </div>
+
       </div>
 
       <!-- ─── INBOX ────────────────────────────────────────────── -->
@@ -1509,6 +1515,38 @@
 
       els.forEach(function(el){ wrap.appendChild(row(el)); });
       document.getElementById('el-new').addEventListener('click', function(){ workbench(null); });
+    })();
+
+    // Recent sends — admins/owners only; the server ships staff none.
+    (function initRecent(){
+      var list = d.recent_broadcasts || [];
+      if(!list.length) return;
+      document.getElementById('recent-card').classList.remove('hidden');
+      var box = document.getElementById('recent-rows');
+      list.forEach(function(b){
+        var when = (b.broadcast_date || (b.created_at||'').slice(0,10)) || '';
+        var firstLine = (b.body||'').replace(/\s+/g,' ').slice(0, 80);
+        var counts = (b.sent_count||0) + '/' + (b.recipient_count||0) +
+          ((b.failed_count||0) ? ' · <span style="color:var(--rust)">'+b.failed_count+' failed</span>' : '');
+        var row = document.createElement('div');
+        row.style.cssText = 'padding:11px 0;border-bottom:1px solid rgba(34,28,20,.06);cursor:pointer';
+        row.innerHTML =
+          '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">'+
+            '<span style="font-size:12.5px;color:var(--ink-faint);white-space:nowrap">'+esc(when)+'</span>'+
+            '<span style="flex:1;min-width:180px;font-size:14px;color:var(--ink)">'+esc(firstLine)+(b.body && b.body.length > 80 ? '…' : '')+'</span>'+
+            '<span style="font-size:13px;color:var(--ink-soft);white-space:nowrap">'+counts+'</span>'+
+          '</div>'+
+          '<div data-full style="display:none;margin-top:8px;background:var(--brand-tint);border-radius:11px;padding:11px 13px;font-size:13.5px;white-space:pre-wrap">'+esc(b.body||'')+
+            '<div style="margin-top:8px;font-size:12px;color:var(--ink-soft)">'+
+              (b.segment_count||1)+' segment'+((b.segment_count||1)===1?'':'s')+
+              (b.sent_by ? ' · sent by '+esc(b.sent_by) : '')+
+              ((b.created_at||'') ? ' · '+esc(b.created_at.replace('T',' ').slice(0,16)) : '')+'</div></div>';
+        row.addEventListener('click', function(){
+          var f = row.querySelector('[data-full]');
+          f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        });
+        box.appendChild(row);
+      });
     })();
 
     // Inbox.
