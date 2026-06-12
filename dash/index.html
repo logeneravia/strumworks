@@ -1033,7 +1033,16 @@
         b.className = 'tabbtn'; b.textContent = el.display_name;
         b.setAttribute('data-chip', el.id);
         b.style.cssText = 'font-size:12.5px;padding:7px 14px;background:var(--card)';
-        b.addEventListener('click', function(){ addInstance(el); });
+        b.addEventListener('click', function(){
+          // One per message unless the element allows more — tapping
+          // a lit chip re-opens its piece instead of duplicating it.
+          var existing = instances.find(function(x){ return x.el && x.el.id === el.id; });
+          if(existing && !(el.config && el.config.allow_multiple)){
+            openEditor(existing, firstSlotNeeding(existing));
+            return;
+          }
+          addInstance(el);
+        });
         pills.appendChild(b);
       });
       var fb = document.createElement('button');
@@ -1270,6 +1279,7 @@
           '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px">'+
             '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-defsel'+(cfg.default_selected?' checked':'')+'> Start every message with this</label>'+
             '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-enab'+(el.enabled!==false?' checked':'')+'> Available in the Send room</label>'+
+            '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-multi'+(cfg.allow_multiple?' checked':'')+'> Can appear more than once</label>'+
           '</div>'+
           (el.id ? '<div style="margin-bottom:14px"><label style="'+L+'">Everything it remembers</label><div data-wblib style="font-size:13px;color:var(--ink-faint)"></div></div>' : '')+
           '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'+
@@ -1362,6 +1372,7 @@
             template_text: val('template_text'), description: val('description'), help: val('help'),
             default_selected: sheet.querySelector('[data-defsel]').checked,
             enabled: sheet.querySelector('[data-enab]').checked,
+            allow_multiple: sheet.querySelector('[data-multi]').checked,
             slots_json: slots, rules: rules
           };
           var errEl = sheet.querySelector('[data-elerr]');
@@ -1403,7 +1414,7 @@
           var sx = ev.clientX, sy = ev.clientY, started = false;
           function mv(e){
             if(!started && (Math.abs(e.clientX-sx) > 3 || Math.abs(e.clientY-sy) > 3)){
-              started = true; beginRowDrag(r);
+              started = true; beginRowDrag(r, e.clientX, e.clientY);
             }
           }
           function up(){
@@ -1479,42 +1490,58 @@
           if(ev.target.closest('.elgrip')) return;  // the grip runs its own drag
           sx = ev.clientX; sy = ev.clientY; started = false;
           if(ev.pointerType === 'touch'){
-            hold = setTimeout(function(){ hold = null; started = true; beginRowDrag(rowEl); }, 320);
+            hold = setTimeout(function(){ hold = null; started = true; beginRowDrag(rowEl, sx, sy); }, 320);
           }
         });
         rowEl.addEventListener('pointermove', function(ev){
           var dx = Math.abs(ev.clientX-sx), dy = Math.abs(ev.clientY-sy);
-          if(!started && ev.pointerType !== 'touch' && ev.buttons && (dy > 6 || dx > 6)){ started = true; beginRowDrag(rowEl); }
+          if(!started && ev.pointerType !== 'touch' && ev.buttons && (dy > 6 || dx > 6)){ started = true; beginRowDrag(rowEl, ev.clientX, ev.clientY); }
           if(hold && (dy > 9 || dx > 9)){ clearTimeout(hold); hold = null; }
         });
         ['pointerup','pointercancel','pointerleave'].forEach(function(k){
           rowEl.addEventListener(k, function(){ if(hold){ clearTimeout(hold); hold = null; } });
         });
       }
-      function beginRowDrag(rowEl){
-        rowEl.style.opacity = '.35';
+      function beginRowDrag(rowEl, x, y){
         if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(e){} }
-        function mv(ev){
-          var rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-elrow]'));
-          var idx = rows.indexOf(rowEl);
+        // The row visibly LIFTS — a ghost rides the pointer, a brand
+        // line marks the landing gap. (v1 had no feedback until a
+        // full row-height of travel; it worked and felt dead.)
+        var g = rowEl.cloneNode(true);
+        g.classList.add('dragGhost');
+        g.style.width = rowEl.offsetWidth + 'px';
+        g.style.left = (x||0)+'px'; g.style.top = (y||0)+'px';
+        document.body.appendChild(g);
+        rowEl.classList.add('dragging');
+        var line = document.createElement('div');
+        line.style.cssText = 'height:3px;background:var(--brand);border-radius:2px;margin:6px 2px;animation:caretPulse .75s ease-in-out infinite';
+        function place(cy){
+          var rows = Array.prototype.filter.call(wrap.querySelectorAll('[data-elrow]'), function(r){ return r !== rowEl; });
           for(var i = 0; i < rows.length; i++){
-            if(rows[i] === rowEl) continue;
             var rect = rows[i].getBoundingClientRect();
-            var mid = rect.top + rect.height/2;
-            if(i < idx && ev.clientY < mid){ wrap.insertBefore(rowEl, rows[i]); break; }
-            if(i > idx && ev.clientY > mid){ wrap.insertBefore(rowEl, rows[i].nextSibling); break; }
+            if(cy < rect.top + rect.height/2){ wrap.insertBefore(line, rows[i]); return; }
           }
+          wrap.appendChild(line);
+        }
+        function mv(ev){
+          g.style.left = ev.clientX+'px'; g.style.top = ev.clientY+'px';
+          place(ev.clientY);
         }
         function tm(ev){ ev.preventDefault(); }
         function up(){
           document.removeEventListener('pointermove', mv);
           document.removeEventListener('pointerup', up);
+          document.removeEventListener('pointercancel', up);
           document.removeEventListener('touchmove', tm);
-          rowEl.style.opacity = '';
+          g.remove();
+          rowEl.classList.remove('dragging');
+          if(line.parentNode){ wrap.insertBefore(rowEl, line); line.remove(); }
           persistOrder();
         }
+        place(y||0);
         document.addEventListener('pointermove', mv);
         document.addEventListener('pointerup', up);
+        document.addEventListener('pointercancel', up);
         document.addEventListener('touchmove', tm, {passive:false});
       }
       function persistOrder(){
