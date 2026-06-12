@@ -748,7 +748,10 @@
         document.getElementById('box-empty').style.display = instances.length ? 'none' : 'block';
         document.querySelectorAll('#el-pills [data-chip]').forEach(function(b){
           var id = b.getAttribute('data-chip');
-          b.classList.toggle('on', instances.some(function(x){ return (x.el ? x.el.id : 'free') === id; }));
+          var n = instances.filter(function(x){ return (x.el ? x.el.id : 'free') === id; }).length;
+          b.classList.toggle('on', n > 0);
+          var nm = b.getAttribute('data-name');
+          if(nm) b.textContent = nm + (n > 1 ? ' ×'+n : '');
         });
       }
       // ── Drag-to-reorder: lift a piece, the caret shows the landing.
@@ -849,7 +852,7 @@
             var sp = document.createElement('span');
             sp.className = 'proseEl';
             sp.dataset.piece = inst.key;
-            sp.textContent = prose;
+            sp.innerHTML = esc(prose) + ' <span style="font-size:11px;opacity:.45">✎</span>';
             sp.title = 'Tap to edit · drag to reorder';
             sp.addEventListener('click', function(){
               if(drag.suppressTap) return;
@@ -946,7 +949,7 @@
             '<button class="tabbtn" data-tok="{name|friend}" style="font-size:12px;padding:5px 11px">Full name</button></div>';
           html += '<textarea id="sheet-input" style="min-height:110px" placeholder="Type as if you were texting a regular.">'+esc(cur)+'</textarea>';
         } else {
-          html += '<input type="text" id="sheet-input" value="'+(lib.length ? '' : esc(cur))+'" placeholder="'+esc((slot && slot.placeholder) || '')+'">';
+          html += '<input type="text" id="sheet-input" value="'+esc(cur)+'" placeholder="'+esc((slot && slot.placeholder) || '')+'">';
         }
         html += '<div style="display:flex;gap:14px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
           '<button class="btn" id="sheet-use">Use this</button>'+
@@ -1032,6 +1035,7 @@
         var b = document.createElement('button');
         b.className = 'tabbtn'; b.textContent = el.display_name;
         b.setAttribute('data-chip', el.id);
+        b.setAttribute('data-name', el.display_name);
         b.style.cssText = 'font-size:12.5px;padding:7px 14px;background:var(--card)';
         b.addEventListener('click', function(){
           // One per message unless the element allows more — tapping
@@ -1048,6 +1052,7 @@
       var fb = document.createElement('button');
       fb.className = 'tabbtn'; fb.textContent = 'Freeflow';
       fb.setAttribute('data-chip', 'free');
+      fb.setAttribute('data-name', 'Freeflow');
       fb.style.cssText = 'font-size:12.5px;padding:7px 14px;background:var(--card)';
       fb.addEventListener('click', function(){ addInstance(null); });
       pills.appendChild(fb);
