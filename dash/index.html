@@ -95,6 +95,14 @@
   .tile.faded .tv{color:var(--ink-faint);font-weight:400}
   .tile .tm{font-size:12px;color:var(--ink-faint);white-space:nowrap}
   .sheet input[type=text],.sheet textarea{width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
+  /* Elements room: one row per element — name, its values, a +. */
+  .elrow{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:12px}
+  .elrow.dim{opacity:.5}
+  .elrow .elname{font-family:"Fraunces",serif;font-size:17px;color:var(--ink);background:none;border:0;cursor:pointer;padding:0}
+  .elrow .elname:hover{color:var(--brand)}
+  .valchip{display:inline-flex;align-items:center;font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 12px;margin:0 6px 6px 0;cursor:pointer;color:var(--ink)}
+  .valchip:hover{border-color:var(--brand);color:var(--brand)}
+  .valchip.newv{color:var(--ink-faint)}
 </style>
 </head>
 <body>
@@ -273,12 +281,11 @@
         </div>
       </div>
 
-      <!-- ─── ELEMENTS — the repertoire ────────────────────────── -->
+      <!-- ─── ELEMENTS — a menu, not a machine shop ────────────── -->
       <div class="tabpane" id="tab-elements">
-        <div class="card">
-          <h2 style="margin-bottom:6px">Your elements</h2>
-          <p style="font-size:14px">The fill-in shapes your sends are built from. Your team taps an element and types two words instead of retyping the line — same voice every day, whoever's sending.</p>
-          <p style="font-size:12.5px;color:var(--ink-faint);margin-top:8px">In a template, <strong>{slot}</strong> is a blank to fill in, and anything in <strong>[square brackets]</strong> only appears if every blank inside it is filled.</p>
+        <div class="card" style="padding:18px 24px">
+          <h2 style="display:inline">Your elements</h2>
+          <span style="font-size:13px;color:var(--ink-faint);margin-left:12px">Tap a value to fix it · tap a name to shape it · hold-drag to reorder</span>
         </div>
         <div id="el-editors"></div>
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
@@ -945,7 +952,7 @@
             t.className = 'tile' + (days !== null && days < 3 ? ' faded' : '');
             t.innerHTML = '<span class="tv">'+esc(h.display_value||h.value)+'</span>'+
               '<span class="tm">'+esc(ageText(h.last_used_at))+'</span>'+
-              '<span class="tm" style="color:var(--honey)">Used '+(h.use_count||1)+'×</span>';
+              '<span class="tm" style="color:var(--honey)">'+(h.use_count > 0 ? 'Used '+h.use_count+'×' : 'new')+'</span>';
             t.addEventListener('click', function(){ setVal(h.display_value||h.value); });
             return t;
           };
@@ -1128,51 +1135,102 @@
       refresh();
     })();
 
-    // ── Elements room — authoring the repertoire (admins shape it) ──
+    // ── Elements room — a menu, not a machine shop (Chip, 2026-06-11).
+    // Each element is ONE ROW: its name, its remembered values (tap to
+    // fix), a + to stock one. The workbench — template, blanks, polish,
+    // toggles, delete — lives behind the name, in a sheet. Hold-drag a
+    // row to reorder. Correcting is the fast layer; shaping is the
+    // slow layer; they no longer share a hallway.
     (function initElements(){
       if(isStaff || d.power !== 'full') return;
       var wrap = document.getElementById('el-editors');
-      var RULE_LABELS = [
-        ['list_house_style', 'House-style list — "&" and "and" become slashes, sentence case (works on a blank named "items")'],
-        ['en_dash_ranges', 'En dash for ranges — 10-4 becomes 10–4 (the – costs extra segments)'],
-        ['collapse_double_spaces', 'Collapse double spaces'],
-        ['smart_quotes', 'Smart quotes — straight quotes become curly (costs extra segments)']
-      ];
       var IN = 'font:inherit;font-size:13.5px;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff';
-      function slotRow(s){
-        s = s || {};
-        var div = document.createElement('div');
-        div.className = 'el-slot-row';
-        div.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--canvas);border-radius:10px;padding:8px;margin-bottom:6px';
-        div.innerHTML =
-          '<input data-sf="name" placeholder="slot_name" value="'+esc(s.name||'')+'" style="flex:1;min-width:90px;'+IN+'">'+
-          '<input data-sf="label" placeholder="Label people see" value="'+esc(s.label||'')+'" style="flex:1.4;min-width:130px;'+IN+'">'+
-          '<input data-sf="placeholder" placeholder="Hint text" value="'+esc(s.placeholder||'')+'" style="flex:1.4;min-width:130px;'+IN+'">'+
-          '<input data-sf="default" placeholder="Pre-filled value" value="'+esc(s.default||'')+'" style="flex:1.2;min-width:110px;'+IN+'">'+
-          '<label style="font-size:12px;display:flex;gap:4px;align-items:center;white-space:nowrap"><input type="checkbox" data-sf="required"'+(s.required?' checked':'')+'> needed</label>'+
-          '<label style="font-size:12px;display:flex;gap:4px;align-items:center;white-space:nowrap"><input type="checkbox" data-sf="long"'+(s.long?' checked':'')+'> big box</label>'+
-          '<button data-rmslot type="button" style="border:0;background:none;color:var(--ink-faint);font-size:16px;cursor:pointer" title="Remove this blank">×</button>';
-        div.querySelector('[data-rmslot]').addEventListener('click', function(){ div.remove(); });
-        return div;
+      var RULE_LABELS = [
+        ['list_house_style', 'House-style list — "&" and "and" become slashes, sentence case (on a blank named "items")'],
+        ['en_dash_ranges', 'En dash for ranges — 10-4 becomes 10–4 (costs segments)'],
+        ['collapse_double_spaces', 'Collapse double spaces'],
+        ['smart_quotes', 'Smart quotes — straight become curly (costs segments)']
+      ];
+      var els = (d.elements_all||[]).slice();
+
+      function mainSlot(el){
+        var slots = el.slots_json || [];
+        for(var i=0;i<slots.length;i++){ if(slots[i].enabled !== false && slots[i].required) return slots[i]; }
+        for(var j=0;j<slots.length;j++){ if(slots[j].enabled !== false) return slots[j]; }
+        return null;
       }
-      function editorCard(el){
+      function dropSheet(){ var s = document.getElementById('sheetWrap'); if(s) s.remove(); }
+
+      // ── The value sheet: fix, forget, or stock one value ────────
+      function valueSheet(el, slot, row){
+        dropSheet();
+        var w = document.createElement('div');
+        w.className = 'sheetWrap'; w.id = 'sheetWrap';
+        w.addEventListener('click', function(ev){ if(ev.target === w) w.remove(); });
+        var sheet = document.createElement('div');
+        sheet.className = 'sheet';
+        sheet.innerHTML =
+          '<div style="font-family:\'Fraunces\',serif;font-size:18px;color:var(--brand);margin-bottom:10px">'+
+            esc(el.display_name)+' → '+esc(slot ? (slot.label || slot.name) : '')+'</div>'+
+          '<input type="text" id="vs-input" value="'+esc(row ? (row.display_value||row.value) : '')+'" placeholder="'+esc((slot && slot.placeholder) || '')+'">'+
+          '<div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
+            '<button class="btn" id="vs-save">'+(row ? 'Save' : 'Add')+'</button>'+
+            '<span data-vserr style="display:none;font-size:13px;color:var(--rust)"></span>'+
+            (row ? '<button id="vs-del" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Forget</button>' : '')+
+          '</div>';
+        w.appendChild(sheet); document.body.appendChild(w);
+        var inp = sheet.querySelector('#vs-input');
+        var err = sheet.querySelector('[data-vserr]');
+        function fail(m){ err.textContent = m; err.style.display = 'inline'; }
+        function save(){
+          var v = inp.value.trim();
+          if(!v){ fail('Type something first.'); return; }
+          var btn = sheet.querySelector('#vs-save');
+          btn.disabled = true;
+          var call = row
+            ? api({token:t, action:'update_library_value', key:row.id, body:v})
+            : api({token:t, action:'add_library_value', key:el.id, level:slot.name, body:v});
+          call.then(function(res){
+            if(res.body.ok){ location.reload(); }
+            else { btn.disabled = false; fail(res.body.error === 'already_remembered' ? 'It already remembers that one.' : ("Couldn't save: "+(res.body.error||'unknown'))); }
+          }).catch(function(){ btn.disabled = false; fail("Couldn't reach the server."); });
+        }
+        sheet.querySelector('#vs-save').addEventListener('click', save);
+        inp.addEventListener('keydown', function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); save(); } });
+        var del = sheet.querySelector('#vs-del');
+        if(del) del.addEventListener('click', function(){
+          if(!confirm('Forget "'+(row.display_value||row.value)+'"? Its tile disappears from the picker.')) return;
+          api({token:t, action:'delete_library_value', key:row.id}).then(function(res){
+            if(res.body.ok){ location.reload(); } else fail(res.body.error||'unknown');
+          });
+        });
+        inp.focus();
+      }
+
+      // ── The workbench sheet: shaping, out of sight until needed ─
+      function workbench(el){
         el = el || {};
         var cfg = el.config || {};
-        var card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.elid = el.id || '';
+        dropSheet();
+        var w = document.createElement('div');
+        w.className = 'sheetWrap'; w.id = 'sheetWrap';
+        w.addEventListener('click', function(ev){ if(ev.target === w) w.remove(); });
+        var sheet = document.createElement('div');
+        sheet.className = 'sheet'; sheet.style.maxWidth = '640px';
+        sheet.dataset.elid = el.id || '';
         var L = 'display:block;font-size:12.5px;font-weight:600;margin-bottom:4px';
-        card.innerHTML =
+        sheet.innerHTML =
+          '<div style="font-family:\'Fraunces\',serif;font-size:19px;color:var(--brand);margin-bottom:14px">'+
+            (el.id ? 'Shape: '+esc(el.display_name||'') : 'A new element')+'</div>'+
           '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
             '<div style="flex:1.6;min-width:170px"><label style="'+L+'">Name</label><input data-ef="display_name" value="'+esc(el.display_name||'')+'" placeholder="Soup" style="width:100%;'+IN+'"></div>'+
             '<div style="flex:1;min-width:130px"><label style="'+L+'">Group</label><input data-ef="category" value="'+esc(el.category||'')+'" placeholder="Today\'s Offerings" style="width:100%;'+IN+'"></div>'+
-            '<div style="width:80px"><label style="'+L+'">Order</label><input data-ef="sort_order" type="number" value="'+esc(String(el.sort_order!=null?el.sort_order:0))+'" style="width:100%;'+IN+'"></div>'+
           '</div>'+
-          '<div style="margin-bottom:12px"><label style="'+L+'">Template</label>'+
+          '<div style="margin-bottom:12px"><label style="'+L+'">Template <span style="font-weight:400;color:var(--ink-faint)">— {blank} fills in; [bracketed parts] vanish unless every blank inside is filled</span></label>'+
             '<textarea data-ef="template_text" placeholder="{name}[, ${price}]." style="min-height:54px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px">'+esc(el.template_text||'')+'</textarea></div>'+
           '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
-            '<div style="flex:1;min-width:200px"><label style="'+L+'">What it\'s for</label><input data-ef="description" value="'+esc(el.description||'')+'" placeholder="The daily soup." style="width:100%;'+IN+'"></div>'+
-            '<div style="flex:1;min-width:200px"><label style="'+L+'">Tip for whoever\'s filling it in</label><input data-ef="help" value="'+esc(cfg.help||'')+'" placeholder="Blank = use default." style="width:100%;'+IN+'"></div>'+
+            '<div style="flex:1;min-width:200px"><label style="'+L+'">What it\'s for</label><input data-ef="description" value="'+esc(el.description||'')+'" style="width:100%;'+IN+'"></div>'+
+            '<div style="flex:1;min-width:200px"><label style="'+L+'">Tip for whoever\'s filling it in</label><input data-ef="help" value="'+esc(cfg.help||'')+'" style="width:100%;'+IN+'"></div>'+
           '</div>'+
           '<div style="margin-bottom:10px"><label style="'+L+'">Blanks to fill</label><div data-slots></div>'+
             '<button data-addslot type="button" class="tabbtn" style="font-size:12.5px;padding:6px 14px">+ Add a blank</button></div>'+
@@ -1182,148 +1240,260 @@
                 '<input type="checkbox" data-rule="'+r[0]+'"'+((el.rules||[]).indexOf(r[0])>=0?' checked':'')+' style="margin-top:3px">'+
                 '<span>'+esc(r[1])+'</span></label>';
             }).join('')+'</div>'+
-          '<div style="margin-bottom:12px"><label style="'+L+'">What it remembers</label>'+
-            '<div style="font-size:12px;color:var(--ink-faint);margin-bottom:6px">The values offered as tiles in the Send room. Fix a casing here and it stays fixed; × forgets one for good.</div>'+
-            '<div data-lib></div></div>'+
           '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px">'+
-            '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-defsel'+(cfg.default_selected?' checked':'')+'> Start every message with this <span style="color:var(--ink-faint)">(your team can remove it)</span></label>'+
+            '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-defsel'+(cfg.default_selected?' checked':'')+'> Start every message with this</label>'+
             '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-enab'+(el.enabled!==false?' checked':'')+'> Available in the Send room</label>'+
           '</div>'+
+          (el.id ? '<div style="margin-bottom:14px"><label style="'+L+'">Everything it remembers</label><div data-wblib style="font-size:13px;color:var(--ink-faint)"></div></div>' : '')+
           '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
             '<button data-save type="button" class="btn">Save</button>'+
             '<span class="saved" data-elsaved>Saved ✓</span>'+
             '<span data-elerr style="display:none;font-size:13.5px;color:var(--rust)"></span>'+
             (el.id ? '<button data-del type="button" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Delete</button>' : '')+
           '</div>';
-        var slotsBox = card.querySelector('[data-slots]');
+        w.appendChild(sheet); document.body.appendChild(w);
+
+        function slotRow(s){
+          s = s || {};
+          var div = document.createElement('div');
+          div.className = 'el-slot-row';
+          div.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--canvas);border-radius:10px;padding:8px;margin-bottom:6px';
+          div.innerHTML =
+            '<input data-sf="name" placeholder="blank_name" value="'+esc(s.name||'')+'" style="flex:1;min-width:90px;'+IN+'">'+
+            '<input data-sf="label" placeholder="Label people see" value="'+esc(s.label||'')+'" style="flex:1.4;min-width:130px;'+IN+'">'+
+            '<input data-sf="placeholder" placeholder="Hint text" value="'+esc(s.placeholder||'')+'" style="flex:1.4;min-width:130px;'+IN+'">'+
+            '<input data-sf="default" placeholder="Pre-filled value" value="'+esc(s.default||'')+'" style="flex:1.2;min-width:110px;'+IN+'">'+
+            '<label style="font-size:12px;display:flex;gap:4px;align-items:center;white-space:nowrap"><input type="checkbox" data-sf="required"'+(s.required?' checked':'')+'> needed</label>'+
+            '<label style="font-size:12px;display:flex;gap:4px;align-items:center;white-space:nowrap"><input type="checkbox" data-sf="long"'+(s.long?' checked':'')+'> big box</label>'+
+            '<button data-rmslot type="button" style="border:0;background:none;color:var(--ink-faint);font-size:16px;cursor:pointer" title="Remove this blank">×</button>';
+          div.querySelector('[data-rmslot]').addEventListener('click', function(){ div.remove(); });
+          return div;
+        }
+        var slotsBox = sheet.querySelector('[data-slots]');
         (el.slots_json||[]).forEach(function(s){ slotsBox.appendChild(slotRow(s)); });
-        card.querySelector('[data-addslot]').addEventListener('click', function(){
+        sheet.querySelector('[data-addslot]').addEventListener('click', function(){
           slotsBox.appendChild(slotRow(null));
         });
 
-        // What it remembers — the library editor. Corrections keep the
-        // admin's exact casing; × forgets a value for good.
-        var libBox = card.querySelector('[data-lib]');
-        var libData = el.library || {};
-        var slotLabels = {};
-        (el.slots_json||[]).forEach(function(s){ slotLabels[s.name] = s.label || s.name; });
-        var libTotal = Object.keys(libData).reduce(function(n,k){ return n + (libData[k]||[]).length; }, 0);
-        if(!el.id || !libTotal){
-          libBox.innerHTML = '<div style="font-size:13px;color:var(--ink-faint)">Nothing yet — it learns from every send.</div>';
-        } else {
-          var libInner = document.createElement('div');
-          libInner.style.display = 'none';
-          var libBuilt = false;
-          var buildLib = function(){
-            Object.keys(libData).forEach(function(slotName){
-              var rows = libData[slotName] || [];
-              if(!rows.length) return;
-              var h = document.createElement('div');
-              h.style.cssText = 'font-size:12px;font-weight:600;color:var(--ink-soft);margin:10px 0 6px';
-              h.textContent = slotLabels[slotName] || slotName;
-              libInner.appendChild(h);
-              rows.forEach(function(r){
-                var rowEl = document.createElement('div');
-                rowEl.style.cssText = 'display:flex;gap:7px;align-items:center;margin-bottom:6px;flex-wrap:wrap';
-                rowEl.innerHTML =
-                  '<input type="text" value="'+esc(r.display_value||r.value)+'" style="flex:1;min-width:150px;'+IN+'">'+
-                  '<span style="font-size:11.5px;color:var(--ink-faint);white-space:nowrap">Used '+(r.use_count||1)+'×</span>'+
-                  '<button data-lsave type="button" class="btn" style="padding:7px 13px;font-size:12.5px;display:none">Save</button>'+
-                  '<button data-ldel type="button" style="border:0;background:none;color:var(--rust);font-size:15px;cursor:pointer" title="Forget this value">×</button>';
-                var inp = rowEl.querySelector('input');
-                var sv = rowEl.querySelector('[data-lsave]');
-                inp.addEventListener('input', function(){
-                  sv.style.display = (inp.value.trim() && inp.value.trim() !== (r.display_value||r.value)) ? 'inline-flex' : 'none';
-                });
-                sv.addEventListener('click', function(){
-                  sv.disabled = true; sv.textContent = '…';
-                  api({token:t, action:'update_library_value', key:r.id, body:inp.value}).then(function(res){
-                    if(res.body.ok){
-                      r.display_value = inp.value.trim();
-                      sv.textContent = '✓';
-                      setTimeout(function(){ sv.style.display='none'; sv.disabled=false; sv.textContent='Save'; }, 900);
-                    } else {
-                      sv.disabled = false; sv.textContent = 'Save';
-                      alert(res.body.error === 'already_remembered'
-                        ? 'It already remembers that one — forget one of the two instead.'
-                        : "Couldn't save: " + (res.body.error||'unknown'));
-                    }
-                  }).catch(function(){ sv.disabled=false; sv.textContent='Save'; alert("Couldn't reach the server."); });
-                });
-                rowEl.querySelector('[data-ldel]').addEventListener('click', function(){
-                  if(!confirm('Forget "'+(r.display_value||r.value)+'"? Its tile disappears from the picker.')) return;
-                  api({token:t, action:'delete_library_value', key:r.id}).then(function(res){
-                    if(res.body.ok){ rowEl.remove(); }
-                    else alert("Couldn't forget it: " + (res.body.error||'unknown'));
-                  });
-                });
-                libInner.appendChild(rowEl);
+        // The complete memory — every blank, edit + forget in place.
+        var wblib = sheet.querySelector('[data-wblib]');
+        if(wblib){
+          var libData = el.library || {};
+          var labels = {};
+          (el.slots_json||[]).forEach(function(s){ labels[s.name] = s.label || s.name; });
+          var total = Object.keys(libData).reduce(function(n,k){ return n + (libData[k]||[]).length; }, 0);
+          if(!total){ wblib.textContent = 'Nothing yet — it learns from every send.'; }
+          else Object.keys(libData).forEach(function(slotName){
+            (libData[slotName]||[]).forEach(function(r){
+              var rowEl = document.createElement('div');
+              rowEl.style.cssText = 'display:flex;gap:7px;align-items:center;margin-bottom:6px;flex-wrap:wrap';
+              rowEl.innerHTML =
+                '<span style="font-size:11.5px;color:var(--ink-faint);min-width:84px">'+esc(labels[slotName]||slotName)+'</span>'+
+                '<input type="text" value="'+esc(r.display_value||r.value)+'" style="flex:1;min-width:140px;'+IN+'">'+
+                '<span style="font-size:11.5px;color:var(--ink-faint);white-space:nowrap">'+(r.use_count>0 ? 'Used '+r.use_count+'×' : 'new')+'</span>'+
+                '<button data-lsave type="button" class="btn" style="padding:7px 13px;font-size:12.5px;display:none">Save</button>'+
+                '<button data-ldel type="button" style="border:0;background:none;color:var(--rust);font-size:15px;cursor:pointer" title="Forget">×</button>';
+              var inp = rowEl.querySelector('input');
+              var sv = rowEl.querySelector('[data-lsave]');
+              inp.addEventListener('input', function(){
+                sv.style.display = (inp.value.trim() && inp.value.trim() !== (r.display_value||r.value)) ? 'inline-flex' : 'none';
               });
+              sv.addEventListener('click', function(){
+                sv.disabled = true; sv.textContent = '…';
+                api({token:t, action:'update_library_value', key:r.id, body:inp.value}).then(function(res){
+                  if(res.body.ok){ r.display_value = inp.value.trim(); sv.textContent='✓'; setTimeout(function(){ sv.style.display='none'; sv.disabled=false; sv.textContent='Save'; }, 900); }
+                  else { sv.disabled=false; sv.textContent='Save'; alert(res.body.error==='already_remembered' ? 'It already remembers that one — forget one of the two instead.' : "Couldn't save: "+(res.body.error||'unknown')); }
+                });
+              });
+              rowEl.querySelector('[data-ldel]').addEventListener('click', function(){
+                if(!confirm('Forget "'+(r.display_value||r.value)+'"?')) return;
+                api({token:t, action:'delete_library_value', key:r.id}).then(function(res){
+                  if(res.body.ok){ rowEl.remove(); } else alert("Couldn't forget it: "+(res.body.error||'unknown'));
+                });
+              });
+              wblib.appendChild(rowEl);
             });
-          };
-          var libTog = document.createElement('button');
-          libTog.type = 'button'; libTog.className = 'tabbtn';
-          libTog.style.cssText = 'font-size:12.5px;padding:6px 14px';
-          libTog.textContent = 'Show ('+libTotal+')';
-          libTog.addEventListener('click', function(){
-            var open = libInner.style.display !== 'none';
-            if(open){ libInner.style.display = 'none'; libTog.textContent = 'Show ('+libTotal+')'; }
-            else {
-              if(!libBuilt){ buildLib(); libBuilt = true; }
-              libInner.style.display = 'block'; libTog.textContent = 'Hide';
-            }
           });
-          libBox.appendChild(libTog);
-          libBox.appendChild(libInner);
         }
-        card.querySelector('[data-save]').addEventListener('click', function(){
+
+        sheet.querySelector('[data-save]').addEventListener('click', function(){
           var btn = this;
-          function val(k){ var n = card.querySelector('[data-ef="'+k+'"]'); return n ? n.value.trim() : ''; }
+          function val(k){ var n = sheet.querySelector('[data-ef="'+k+'"]'); return n ? n.value.trim() : ''; }
           var slots = [];
-          card.querySelectorAll('.el-slot-row').forEach(function(row){
+          sheet.querySelectorAll('.el-slot-row').forEach(function(row){
             function sv(k){ var n = row.querySelector('[data-sf="'+k+'"]'); return n ? (n.type==='checkbox' ? n.checked : n.value.trim()) : ''; }
             if(sv('name')) slots.push({ name:sv('name'), label:sv('label'), placeholder:sv('placeholder'), default:sv('default'), required:sv('required'), long:sv('long') });
           });
           var rules = [];
-          card.querySelectorAll('[data-rule]').forEach(function(cb){ if(cb.checked) rules.push(cb.getAttribute('data-rule')); });
+          sheet.querySelectorAll('[data-rule]').forEach(function(cb){ if(cb.checked) rules.push(cb.getAttribute('data-rule')); });
           var payload = {
-            id: card.dataset.elid || '',
+            id: sheet.dataset.elid || '',
             display_name: val('display_name'), category: val('category'),
-            sort_order: parseInt(val('sort_order')||'0',10)||0,
+            sort_order: el.sort_order != null ? el.sort_order : (els.length+1)*10,
             template_text: val('template_text'), description: val('description'), help: val('help'),
-            default_selected: card.querySelector('[data-defsel]').checked,
-            enabled: card.querySelector('[data-enab]').checked,
+            default_selected: sheet.querySelector('[data-defsel]').checked,
+            enabled: sheet.querySelector('[data-enab]').checked,
             slots_json: slots, rules: rules
           };
-          var errEl = card.querySelector('[data-elerr]');
+          var errEl = sheet.querySelector('[data-elerr]');
           errEl.style.display = 'none';
           btn.disabled = true; btn.textContent = 'Saving…';
-          api({token:t, action:'upsert_element', element: payload}).then(function(r){
+          api({token:t, action:'upsert_element', element: payload}).then(function(res){
             btn.disabled = false; btn.textContent = 'Save';
-            if(r.body.ok){
-              var s = card.querySelector('[data-elsaved]'); s.style.display = 'inline';
-              setTimeout(function(){ location.reload(); }, 900);
-            } else { errEl.textContent = "Couldn't save: " + (r.body.error||'unknown'); errEl.style.display = 'inline'; }
+            if(res.body.ok){
+              var s = sheet.querySelector('[data-elsaved]'); s.style.display = 'inline';
+              setTimeout(function(){ location.reload(); }, 700);
+            } else { errEl.textContent = "Couldn't save: "+(res.body.error||'unknown'); errEl.style.display = 'inline'; }
           }).catch(function(){ btn.disabled = false; btn.textContent = 'Save'; errEl.textContent = "Couldn't reach the server."; errEl.style.display = 'inline'; });
         });
-        var del = card.querySelector('[data-del]');
+        var del = sheet.querySelector('[data-del]');
         if(del) del.addEventListener('click', function(){
           if(!confirm('Delete "'+(el.display_name||'this element')+'"? Unticking "Available in the Send room" keeps it (and its memory) without showing it.')) return;
-          if(!confirm('Deleting also clears what it has learned — the values it remembers. Really delete?')) return;
-          api({token:t, action:'delete_element', key: el.id}).then(function(r){
-            if(r.body.ok){ location.reload(); }
-            else alert("Couldn't delete: " + (r.body.error||'unknown'));
+          if(!confirm('Deleting also clears everything it remembers. Really delete?')) return;
+          api({token:t, action:'delete_element', key: el.id}).then(function(res){
+            if(res.body.ok){ location.reload(); } else alert("Couldn't delete: "+(res.body.error||'unknown'));
           });
         });
-        return card;
       }
-      (d.elements_all||[]).forEach(function(el){ wrap.appendChild(editorCard(el)); });
-      document.getElementById('el-new').addEventListener('click', function(){
-        var c = editorCard(null);
-        wrap.appendChild(c);
-        c.scrollIntoView({behavior:'smooth', block:'start'});
-        var f = c.querySelector('input'); if(f) f.focus();
-      });
+
+      // ── One row per element ─────────────────────────────────────
+      function row(el){
+        var r = document.createElement('div');
+        r.className = 'elrow' + (el.enabled === false ? ' dim' : '');
+        r.setAttribute('data-elrow', el.id);
+        var head = document.createElement('div');
+        head.style.cssText = 'display:flex;align-items:baseline;gap:10px;margin-bottom:8px';
+        var nameBtn = document.createElement('button');
+        nameBtn.className = 'elname';
+        nameBtn.textContent = el.display_name;
+        nameBtn.title = 'Shape this element';
+        nameBtn.addEventListener('click', function(){ workbench(el); });
+        head.appendChild(nameBtn);
+        if(el.enabled === false){
+          var off = document.createElement('span');
+          off.style.cssText = 'font-size:11px;color:var(--ink-faint)';
+          off.textContent = 'off';
+          head.appendChild(off);
+        }
+        var gear = document.createElement('button');
+        gear.textContent = '⚙';
+        gear.title = 'Shape this element';
+        gear.style.cssText = 'margin-left:auto;border:0;background:none;color:var(--ink-faint);font-size:15px;cursor:pointer';
+        gear.addEventListener('click', function(){ workbench(el); });
+        head.appendChild(gear);
+        r.appendChild(head);
+
+        var ms = mainSlot(el);
+        var chips = document.createElement('div');
+        if(ms){
+          var vals = (el.library && el.library[ms.name]) || [];
+          vals.slice(0, 12).forEach(function(v){
+            var c = document.createElement('button');
+            c.className = 'valchip' + (v.use_count > 0 ? '' : ' newv');
+            c.textContent = v.display_value || v.value;
+            c.title = (v.use_count > 0 ? 'Used '+v.use_count+'× — ' : 'Never sent yet — ') + 'tap to fix or forget';
+            c.addEventListener('click', function(){ valueSheet(el, ms, v); });
+            chips.appendChild(c);
+          });
+          if(vals.length > 12){
+            var moreC = document.createElement('button');
+            moreC.className = 'valchip newv';
+            moreC.textContent = '… '+(vals.length-12)+' more';
+            moreC.addEventListener('click', function(){ workbench(el); });
+            chips.appendChild(moreC);
+          }
+          var add = document.createElement('button');
+          add.className = 'valchip';
+          add.textContent = '+';
+          add.title = 'Stock a value for next time';
+          add.style.fontWeight = '700';
+          add.addEventListener('click', function(){ valueSheet(el, ms, null); });
+          chips.appendChild(add);
+        } else {
+          var none = document.createElement('span');
+          none.style.cssText = 'font-size:12.5px;color:var(--ink-faint)';
+          none.textContent = 'No blanks — shape it to add some.';
+          chips.appendChild(none);
+        }
+        r.appendChild(chips);
+        makeRowDraggable(r, el);
+        return r;
+      }
+
+      // ── Hold-drag rows to reorder; the order quietly persists ───
+      function makeRowDraggable(rowEl, el){
+        var sx = 0, sy = 0, hold = null, started = false;
+        rowEl.addEventListener('pointerdown', function(ev){
+          if(ev.target.closest('button')) return;   // names, gears, chips are taps
+          sx = ev.clientX; sy = ev.clientY; started = false;
+          if(ev.pointerType === 'touch'){
+            hold = setTimeout(function(){ hold = null; started = true; beginRowDrag(rowEl); }, 320);
+          }
+        });
+        rowEl.addEventListener('pointermove', function(ev){
+          var dx = Math.abs(ev.clientX-sx), dy = Math.abs(ev.clientY-sy);
+          if(!started && ev.pointerType !== 'touch' && ev.buttons && (dy > 6 || dx > 6)){ started = true; beginRowDrag(rowEl); }
+          if(hold && (dy > 9 || dx > 9)){ clearTimeout(hold); hold = null; }
+        });
+        ['pointerup','pointercancel','pointerleave'].forEach(function(k){
+          rowEl.addEventListener(k, function(){ if(hold){ clearTimeout(hold); hold = null; } });
+        });
+      }
+      function beginRowDrag(rowEl){
+        rowEl.style.opacity = '.35';
+        if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(e){} }
+        function mv(ev){
+          var rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-elrow]'));
+          var idx = rows.indexOf(rowEl);
+          for(var i = 0; i < rows.length; i++){
+            if(rows[i] === rowEl) continue;
+            var rect = rows[i].getBoundingClientRect();
+            var mid = rect.top + rect.height/2;
+            if(i < idx && ev.clientY < mid){ wrap.insertBefore(rowEl, rows[i]); break; }
+            if(i > idx && ev.clientY > mid){ wrap.insertBefore(rowEl, rows[i].nextSibling); break; }
+          }
+        }
+        function tm(ev){ ev.preventDefault(); }
+        function up(){
+          document.removeEventListener('pointermove', mv);
+          document.removeEventListener('pointerup', up);
+          document.removeEventListener('touchmove', tm);
+          rowEl.style.opacity = '';
+          persistOrder();
+        }
+        document.addEventListener('pointermove', mv);
+        document.addEventListener('pointerup', up);
+        document.addEventListener('touchmove', tm, {passive:false});
+      }
+      function persistOrder(){
+        var rows = Array.prototype.slice.call(wrap.querySelectorAll('[data-elrow]'));
+        var calls = [];
+        rows.forEach(function(rEl, i){
+          var el = els.find(function(x){ return x.id === rEl.getAttribute('data-elrow'); });
+          var want = (i+1)*10;
+          if(!el || el.sort_order === want) return;
+          el.sort_order = want;
+          calls.push(el);
+        });
+        if(!calls.length) return;
+        (function next(k){
+          if(k >= calls.length) return;
+          var el = calls[k], cfg = el.config || {};
+          api({token:t, action:'upsert_element', element:{
+            id: el.id, display_name: el.display_name, category: el.category || '',
+            sort_order: el.sort_order, template_text: el.template_text,
+            description: el.description || '', help: cfg.help || '',
+            default_selected: !!cfg.default_selected, enabled: el.enabled !== false,
+            slots_json: el.slots_json || [], rules: el.rules || []
+          }}).then(function(res){
+            if(!res.body.ok){ alert("Couldn't save the new order: "+(res.body.error||'unknown')); return; }
+            next(k+1);
+          });
+        })(0);
+      }
+
+      els.forEach(function(el){ wrap.appendChild(row(el)); });
+      document.getElementById('el-new').addEventListener('click', function(){ workbench(null); });
     })();
 
     // Inbox.
