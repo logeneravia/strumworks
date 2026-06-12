@@ -934,8 +934,9 @@
         } else {
           html += '<input type="text" id="sheet-input" value="'+(lib.length ? '' : esc(cur))+'" placeholder="'+esc((slot && slot.placeholder) || '')+'">';
         }
-        html += '<div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
+        html += '<div style="display:flex;gap:14px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
           '<button class="btn" id="sheet-use">Use this</button>'+
+          '<button id="sheet-cancel" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Cancel</button>'+
           (cur ? '<button id="sheet-clear" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Clear</button>' : '')+
           '<button id="sheet-remove" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Remove piece</button></div>';
         sheet.innerHTML = html;
@@ -1173,12 +1174,14 @@
           '<div style="font-family:\'Fraunces\',serif;font-size:18px;color:var(--brand);margin-bottom:10px">'+
             esc(el.display_name)+' → '+esc(slot ? (slot.label || slot.name) : '')+'</div>'+
           '<input type="text" id="vs-input" value="'+esc(row ? (row.display_value||row.value) : '')+'" placeholder="'+esc((slot && slot.placeholder) || '')+'">'+
-          '<div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
+          '<div style="display:flex;gap:14px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
             '<button class="btn" id="vs-save">'+(row ? 'Save' : 'Add')+'</button>'+
+            '<button id="vs-cancel" type="button" style="border:0;background:none;color:var(--ink-soft);font-size:13.5px;font-weight:600;cursor:pointer">Cancel</button>'+
             '<span data-vserr style="display:none;font-size:13px;color:var(--rust)"></span>'+
             (row ? '<button id="vs-del" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Forget</button>' : '')+
           '</div>';
         w.appendChild(sheet); document.body.appendChild(w);
+        sheet.querySelector('#vs-cancel').addEventListener('click', function(){ w.remove(); });
         var inp = sheet.querySelector('#vs-input');
         var err = sheet.querySelector('[data-vserr]');
         function fail(m){ err.textContent = m; err.style.display = 'inline'; }
@@ -1245,13 +1248,15 @@
             '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-enab'+(el.enabled!==false?' checked':'')+'> Available in the Send room</label>'+
           '</div>'+
           (el.id ? '<div style="margin-bottom:14px"><label style="'+L+'">Everything it remembers</label><div data-wblib style="font-size:13px;color:var(--ink-faint)"></div></div>' : '')+
-          '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+          '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'+
             '<button data-save type="button" class="btn">Save</button>'+
+            '<button data-cancel type="button" style="border:0;background:none;color:var(--ink-soft);font-size:13.5px;font-weight:600;cursor:pointer">Cancel</button>'+
             '<span class="saved" data-elsaved>Saved ✓</span>'+
             '<span data-elerr style="display:none;font-size:13.5px;color:var(--rust)"></span>'+
             (el.id ? '<button data-del type="button" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Delete</button>' : '')+
           '</div>';
         w.appendChild(sheet); document.body.appendChild(w);
+        sheet.querySelector('[data-cancel]').addEventListener('click', function(){ w.remove(); });
 
         function slotRow(s){
           s = s || {};
