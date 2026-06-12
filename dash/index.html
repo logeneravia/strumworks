@@ -205,7 +205,8 @@
 
           <div id="cmp-guard" style="display:none;margin-top:14px;background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:13px 15px;font-size:13.5px;color:#6b4a12"></div>
 
-          <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end">
+          <div style="margin-top:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end">
+            <button id="cmp-clear" style="margin-right:auto;border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Start over</button>
             <span style="display:none;font-size:13.5px;color:var(--rust)" id="cmp-err"></span>
             <button class="btn" id="cmp-send" style="padding:12px 34px;font-size:15.5px">Send</button>
           </div>
@@ -1042,6 +1043,15 @@
       // Suggested, never imposed; the × is right there.
       (d.elements||[]).forEach(function(el){
         if(el.config && el.config.default_selected) addInstance(el);
+      });
+
+      // Start over — empty the box back to a blank slate. (A fresh
+      // page-load re-sets the bench; this clears even that.)
+      document.getElementById('cmp-clear').addEventListener('click', function(){
+        if(instances.length && !confirm('Clear the whole message and start over?')) return;
+        instances = [];
+        var sw = document.getElementById('sheetWrap'); if(sw) sw.remove();
+        renderBox(); refresh();
       });
 
       // Send — async-first: accepted now, truth by polling.
