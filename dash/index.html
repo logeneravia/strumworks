@@ -91,6 +91,8 @@
   @media(min-width:600px){.sheetWrap{align-items:center;padding:24px}.sheet{border-radius:22px}}
   .tile{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer}
   .tile:hover{background:var(--brand-tint)}
+  .tile.sel{border-color:var(--brand);background:var(--brand-tint)}
+  .tile.sel .tv{color:var(--brand)}
   .tile .tv{flex:1;font-weight:600;font-size:14.5px}
   .tile.faded .tv{color:var(--ink-faint);font-weight:400}
   .tile .tm{font-size:12px;color:var(--ink-faint);white-space:nowrap}
@@ -646,7 +648,14 @@
             return it.replace(/\s+&\s+/g,'/').replace(/\s+\band\b\s+/gi,'/').toLowerCase();
           });
           items[0] = items[0].charAt(0).toUpperCase() + items[0].slice(1);
-          return items.join(', ');
+          // Tight grammar (Chip, day one): the last pair joins with
+          // "and" — "Cheddar pepper and cherry/dark chocolate scones",
+          // not a staccato list.
+          if(items.length > 1){
+            var lastItem = items.pop();
+            return items.join(', ') + ' and ' + lastItem;
+          }
+          return items[0];
         }},
         en_dash_ranges: {stage:'output', fn:function(s){
           return (s||'').replace(/(\d)\s*-\s*(?=\d)/g, '$1–');
@@ -694,9 +703,14 @@
           // screenshot, demo morning).
           if(!instComplete(inst)) return;
           if(inst.el){ var r = renderTemplate(inst.el.template_text, inst.values, inst.el.rules); if(r) parts.push(r); }
-          else if((inst.freeText||'').trim()) parts.push(inst.freeText.trim());
+          else if((inst.freeText||'').trim()){
+            // Freeflow gets the same light grooming as rendered
+            // pieces — "Cinnamon buns ." shipped a floating period
+            // on day one.
+            parts.push(inst.freeText.trim().replace(/\s+/g,' ').replace(/\s+([.,!?;:])/g,'$1'));
+          }
         });
-        return parts.join(' ');
+        return parts.join(' ').replace(/\s+([.,!?;:])/g,'$1');
       }
       // Approximate GSM segment math (server recomputes authoritatively).
       function segCount(text){
@@ -737,7 +751,11 @@
         // say something — empty brackets render to a near-invisible
         // dot otherwise (found live by Chip, demo morning).
         if(slots.length && !slots.some(function(sl){ return (inst.values[sl.name]||'').trim(); })) return false;
-        return true;
+        // And a render that's punctuation-only is STILL saying
+        // nothing: Important date with only a label fills a blank,
+        // but its [label is date] bracket dies and leaves ".". Pill.
+        var rendered = renderTemplate(inst.el.template_text, inst.values, inst.el.rules);
+        return /[A-Za-z0-9]/.test(rendered);
       }
       function firstSlotNeeding(inst){
         var slots = (inst.el && inst.el.slots_json) || [];
@@ -965,8 +983,13 @@
         wrap.appendChild(sheet);
         document.body.appendChild(wrap);
 
-        // Tiles: top 8 then a quiet Older toggle. Used-very-recently
-        // tiles fade — freshness pressure without a rule (desktop).
+        // Tiles SELECT, they never commit (Janet tapped one just to
+        // read it and it fired — the lesson of day one). A tap fills
+        // the input — the single source of truth — and highlights the
+        // tile; Use This / Enter commits whatever the input holds.
+        // On a list blank (house-style list rule), extra taps APPEND,
+        // so "Scones twice" becomes one piece: "a and b scones".
+        var isList = !isFree && slotName === 'items' && ((inst.el.rules||[]).indexOf('list_house_style') >= 0);
         if(!isLong && lib.length){
           var tilesBox = sheet.querySelector('#sheet-tiles');
           var tile = function(h){
@@ -976,7 +999,17 @@
             t.innerHTML = '<span class="tv">'+esc(h.display_value||h.value)+'</span>'+
               '<span class="tm">'+esc(ageText(h.last_used_at))+'</span>'+
               '<span class="tm" style="color:var(--honey)">'+(h.use_count > 0 ? 'Used '+h.use_count+'×' : 'new')+'</span>';
-            t.addEventListener('click', function(){ setVal(h.display_value||h.value); });
+            t.addEventListener('click', function(){
+              var v = h.display_value || h.value;
+              var inp = sheet.querySelector('#sheet-input');
+              if(isList && inp.value.trim()){
+                inp.value = inp.value.replace(/[,\s]+$/,'') + ', ' + v;
+              } else {
+                inp.value = v;
+                tilesBox.querySelectorAll('.tile').forEach(function(x){ x.classList.remove('sel'); });
+              }
+              t.classList.add('sel');
+            });
             return t;
           };
           lib.slice(0,8).forEach(function(h){ tilesBox.appendChild(tile(h)); });
@@ -990,6 +1023,12 @@
               more.remove();
             });
             tilesBox.appendChild(more);
+          }
+          if(isList){
+            var lh = document.createElement('div');
+            lh.style.cssText = 'font-size:12px;color:var(--ink-faint);margin:2px 0 4px';
+            lh.textContent = 'Tap more than one — they join into a list.';
+            tilesBox.appendChild(lh);
           }
         }
 
@@ -1111,7 +1150,8 @@
         p.style.display='block';
         p.innerHTML = '<strong>'+(b.completed_at?'Sent.':'Sending…')+'</strong> '+
           (b.sent_count||0)+' of '+(b.recipient_count||0)+' delivered to the carrier'+
-          ((b.failed_count||0) ? ' · '+b.failed_count+' failed' : '');
+          ((b.failed_count||0) ? ' · '+b.failed_count+' failed' : '')+
+          (b.completed_at ? '' : '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:6px;font-weight:400">It\'s safely underway — you can walk away and it finishes on its own. Check back any time.</div>');
         return !!b.completed_at;
       }
       async function trackProgress(id){
