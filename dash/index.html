@@ -1173,6 +1173,9 @@
                 '<input type="checkbox" data-rule="'+r[0]+'"'+((el.rules||[]).indexOf(r[0])>=0?' checked':'')+' style="margin-top:3px">'+
                 '<span>'+esc(r[1])+'</span></label>';
             }).join('')+'</div>'+
+          '<div style="margin-bottom:12px"><label style="'+L+'">What it remembers</label>'+
+            '<div style="font-size:12px;color:var(--ink-faint);margin-bottom:6px">The values offered as tiles in the Send room. Fix a casing here and it stays fixed; × forgets one for good.</div>'+
+            '<div data-lib></div></div>'+
           '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px">'+
             '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-defsel'+(cfg.default_selected?' checked':'')+'> Start every message with this <span style="color:var(--ink-faint)">(your team can remove it)</span></label>'+
             '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" data-enab'+(el.enabled!==false?' checked':'')+'> Available in the Send room</label>'+
@@ -1188,6 +1191,82 @@
         card.querySelector('[data-addslot]').addEventListener('click', function(){
           slotsBox.appendChild(slotRow(null));
         });
+
+        // What it remembers — the library editor. Corrections keep the
+        // admin's exact casing; × forgets a value for good.
+        var libBox = card.querySelector('[data-lib]');
+        var libData = el.library || {};
+        var slotLabels = {};
+        (el.slots_json||[]).forEach(function(s){ slotLabels[s.name] = s.label || s.name; });
+        var libTotal = Object.keys(libData).reduce(function(n,k){ return n + (libData[k]||[]).length; }, 0);
+        if(!el.id || !libTotal){
+          libBox.innerHTML = '<div style="font-size:13px;color:var(--ink-faint)">Nothing yet — it learns from every send.</div>';
+        } else {
+          var libInner = document.createElement('div');
+          libInner.style.display = 'none';
+          var libBuilt = false;
+          var buildLib = function(){
+            Object.keys(libData).forEach(function(slotName){
+              var rows = libData[slotName] || [];
+              if(!rows.length) return;
+              var h = document.createElement('div');
+              h.style.cssText = 'font-size:12px;font-weight:600;color:var(--ink-soft);margin:10px 0 6px';
+              h.textContent = slotLabels[slotName] || slotName;
+              libInner.appendChild(h);
+              rows.forEach(function(r){
+                var rowEl = document.createElement('div');
+                rowEl.style.cssText = 'display:flex;gap:7px;align-items:center;margin-bottom:6px;flex-wrap:wrap';
+                rowEl.innerHTML =
+                  '<input type="text" value="'+esc(r.display_value||r.value)+'" style="flex:1;min-width:150px;'+IN+'">'+
+                  '<span style="font-size:11.5px;color:var(--ink-faint);white-space:nowrap">Used '+(r.use_count||1)+'×</span>'+
+                  '<button data-lsave type="button" class="btn" style="padding:7px 13px;font-size:12.5px;display:none">Save</button>'+
+                  '<button data-ldel type="button" style="border:0;background:none;color:var(--rust);font-size:15px;cursor:pointer" title="Forget this value">×</button>';
+                var inp = rowEl.querySelector('input');
+                var sv = rowEl.querySelector('[data-lsave]');
+                inp.addEventListener('input', function(){
+                  sv.style.display = (inp.value.trim() && inp.value.trim() !== (r.display_value||r.value)) ? 'inline-flex' : 'none';
+                });
+                sv.addEventListener('click', function(){
+                  sv.disabled = true; sv.textContent = '…';
+                  api({token:t, action:'update_library_value', key:r.id, body:inp.value}).then(function(res){
+                    if(res.body.ok){
+                      r.display_value = inp.value.trim();
+                      sv.textContent = '✓';
+                      setTimeout(function(){ sv.style.display='none'; sv.disabled=false; sv.textContent='Save'; }, 900);
+                    } else {
+                      sv.disabled = false; sv.textContent = 'Save';
+                      alert(res.body.error === 'already_remembered'
+                        ? 'It already remembers that one — forget one of the two instead.'
+                        : "Couldn't save: " + (res.body.error||'unknown'));
+                    }
+                  }).catch(function(){ sv.disabled=false; sv.textContent='Save'; alert("Couldn't reach the server."); });
+                });
+                rowEl.querySelector('[data-ldel]').addEventListener('click', function(){
+                  if(!confirm('Forget "'+(r.display_value||r.value)+'"? Its tile disappears from the picker.')) return;
+                  api({token:t, action:'delete_library_value', key:r.id}).then(function(res){
+                    if(res.body.ok){ rowEl.remove(); }
+                    else alert("Couldn't forget it: " + (res.body.error||'unknown'));
+                  });
+                });
+                libInner.appendChild(rowEl);
+              });
+            });
+          };
+          var libTog = document.createElement('button');
+          libTog.type = 'button'; libTog.className = 'tabbtn';
+          libTog.style.cssText = 'font-size:12.5px;padding:6px 14px';
+          libTog.textContent = 'Show ('+libTotal+')';
+          libTog.addEventListener('click', function(){
+            var open = libInner.style.display !== 'none';
+            if(open){ libInner.style.display = 'none'; libTog.textContent = 'Show ('+libTotal+')'; }
+            else {
+              if(!libBuilt){ buildLib(); libBuilt = true; }
+              libInner.style.display = 'block'; libTog.textContent = 'Hide';
+            }
+          });
+          libBox.appendChild(libTog);
+          libBox.appendChild(libInner);
+        }
         card.querySelector('[data-save]').addEventListener('click', function(){
           var btn = this;
           function val(k){ var n = card.querySelector('[data-ef="'+k+'"]'); return n ? n.value.trim() : ''; }
