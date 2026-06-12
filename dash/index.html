@@ -1019,6 +1019,15 @@
       fb.style.cssText = 'font-size:12.5px;padding:7px 14px;background:var(--card)';
       fb.addEventListener('click', function(){ addInstance(null); });
       pills.appendChild(fb);
+      // Admins get the door to the workshop right where the tools live.
+      if(!isStaff && d.power === 'full'){
+        var ed = document.createElement('button');
+        ed.textContent = 'edit these →';
+        ed.style.cssText = 'border:0;background:none;color:var(--ink-faint);font-size:12px;cursor:pointer;padding:7px 6px;align-self:center';
+        ed.title = 'Open the Elements room';
+        ed.addEventListener('click', function(){ setTab('elements'); });
+        pills.appendChild(ed);
+      }
 
       // The standing pieces arrive on the bench as pills (or, when a
       // default pre-fills them — like Hours — already as prose).
