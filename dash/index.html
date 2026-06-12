@@ -294,7 +294,7 @@
       <div class="tabpane" id="tab-elements">
         <div class="card" style="padding:18px 24px">
           <h2 style="display:inline">Your elements</h2>
-          <span style="font-size:13px;color:var(--ink-faint);margin-left:12px">Tap a value to fix it · tap a name to shape it · drag ⠿ to reorder (the Send tray follows)</span>
+          <span style="font-size:13px;color:var(--ink-faint);margin-left:12px">Tap a value to fix it · tap a name to shape it · drag ≡ to reorder (the Send tray follows)</span>
         </div>
         <div id="el-editors"></div>
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
@@ -1396,7 +1396,7 @@
         // moment it moves, mouse or finger, no hold required.
         var grip = document.createElement('span');
         grip.className = 'elgrip';
-        grip.textContent = '⠿';
+        grip.textContent = '≡';
         grip.title = 'Drag to reorder — the Send room tray follows this order';
         grip.addEventListener('pointerdown', function(ev){
           ev.preventDefault();
