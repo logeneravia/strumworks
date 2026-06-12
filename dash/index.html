@@ -100,6 +100,8 @@
   .elrow.dim{opacity:.5}
   .elrow .elname{font-family:"Fraunces",serif;font-size:17px;color:var(--ink);background:none;border:0;cursor:pointer;padding:0}
   .elrow .elname:hover{color:var(--brand)}
+  .elgrip{cursor:grab;color:var(--ink-faint);font-size:16px;line-height:1;touch-action:none;-webkit-user-select:none;user-select:none;padding:2px 10px 2px 0}
+  .elgrip:active{cursor:grabbing}
   .valchip{display:inline-flex;align-items:center;font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 12px;margin:0 6px 6px 0;cursor:pointer;color:var(--ink)}
   .valchip:hover{border-color:var(--brand);color:var(--brand)}
   .valchip.newv{color:var(--ink-faint)}
@@ -292,7 +294,7 @@
       <div class="tabpane" id="tab-elements">
         <div class="card" style="padding:18px 24px">
           <h2 style="display:inline">Your elements</h2>
-          <span style="font-size:13px;color:var(--ink-faint);margin-left:12px">Tap a value to fix it · tap a name to shape it · hold-drag to reorder</span>
+          <span style="font-size:13px;color:var(--ink-faint);margin-left:12px">Tap a value to fix it · tap a name to shape it · drag ⠿ to reorder (the Send tray follows)</span>
         </div>
         <div id="el-editors"></div>
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
@@ -1390,6 +1392,28 @@
         r.setAttribute('data-elrow', el.id);
         var head = document.createElement('div');
         head.style.cssText = 'display:flex;align-items:baseline;gap:10px;margin-bottom:8px';
+        // The grip: the unmistakable "drag me" — starts a drag the
+        // moment it moves, mouse or finger, no hold required.
+        var grip = document.createElement('span');
+        grip.className = 'elgrip';
+        grip.textContent = '⠿';
+        grip.title = 'Drag to reorder — the Send room tray follows this order';
+        grip.addEventListener('pointerdown', function(ev){
+          ev.preventDefault();
+          var sx = ev.clientX, sy = ev.clientY, started = false;
+          function mv(e){
+            if(!started && (Math.abs(e.clientX-sx) > 3 || Math.abs(e.clientY-sy) > 3)){
+              started = true; beginRowDrag(r);
+            }
+          }
+          function up(){
+            document.removeEventListener('pointermove', mv);
+            document.removeEventListener('pointerup', up);
+          }
+          document.addEventListener('pointermove', mv);
+          document.addEventListener('pointerup', up);
+        });
+        head.appendChild(grip);
         var nameBtn = document.createElement('button');
         nameBtn.className = 'elname';
         nameBtn.textContent = el.display_name;
@@ -1452,6 +1476,7 @@
         var sx = 0, sy = 0, hold = null, started = false;
         rowEl.addEventListener('pointerdown', function(ev){
           if(ev.target.closest('button')) return;   // names, gears, chips are taps
+          if(ev.target.closest('.elgrip')) return;  // the grip runs its own drag
           sx = ev.clientX; sy = ev.clientY; started = false;
           if(ev.pointerType === 'touch'){
             hold = setTimeout(function(){ hold = null; started = true; beginRowDrag(rowEl); }, 320);
