@@ -722,10 +722,15 @@
       // into its PROSE, in place — tap the prose to re-edit it.
       function instComplete(inst){
         if(!inst.el) return !!(inst.freeText||'').trim();
-        return (inst.el.slots_json||[]).every(function(sl){
-          if(sl.enabled === false || !sl.required) return true;
-          return !!(inst.values[sl.name]||'').trim();
-        });
+        var slots = (inst.el.slots_json||[]).filter(function(sl){ return sl.enabled !== false; });
+        for(var i=0;i<slots.length;i++){
+          if(slots[i].required && !(inst.values[slots[i].name]||'').trim()) return false;
+        }
+        // All-optional pieces (Important date) stay PILLS until they
+        // say something — empty brackets render to a near-invisible
+        // dot otherwise (found live by Chip, demo morning).
+        if(slots.length && !slots.some(function(sl){ return (inst.values[sl.name]||'').trim(); })) return false;
+        return true;
       }
       function firstSlotNeeding(inst){
         var slots = (inst.el && inst.el.slots_json) || [];
@@ -1005,6 +1010,7 @@
         sheet.querySelector('#sheet-use').addEventListener('click', function(){
           setVal(sheet.querySelector('#sheet-input').value);
         });
+        sheet.querySelector('#sheet-cancel').addEventListener('click', function(){ closeEditor(); });
         var inp0 = sheet.querySelector('#sheet-input');
         inp0.addEventListener('keydown', function(ev){
           if(ev.key === 'Enter' && !isLong){ ev.preventDefault(); setVal(inp0.value); }
