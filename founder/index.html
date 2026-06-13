@@ -79,8 +79,10 @@
     </div>
 
     <div id="view" class="hidden">
-      <span class="eyebrow">Founder console</span>
-      <h1 id="headline">&nbsp;</h1>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+        <div><span class="eyebrow">Founder console</span><h1 id="headline">&nbsp;</h1></div>
+        <a id="cmd-link" href="#" style="display:none;align-self:center;font:inherit;font-weight:600;font-size:13.5px;text-decoration:none;background:var(--brand);color:#fff;border-radius:99px;padding:9px 18px;white-space:nowrap">Command Center →</a>
+      </div>
 
       <div class="tabbar">
         <button class="tabbtn" data-tab="home">Home</button>
@@ -213,6 +215,9 @@
       if(!res.ok || !res.body.ok || res.body.role !== 'founder'){ show('err'); return; }
       var d = res.body;
       document.getElementById('headline').textContent = "Hello, " + d.first_name + ".";
+      // The founder's private command center — same token carries across.
+      var cl = document.getElementById('cmd-link');
+      if(cl){ cl.href = "/command/?t=" + encodeURIComponent(t); cl.style.display = "inline-block"; }
 
       // Stats strip — the pulse.
       var unread = (d.inbox||[]).filter(function(m){ return !m.read_at; }).length;

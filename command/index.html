@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command Center</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#F4EDDF; --card:#FFFCF6; --ink:#221C14; --ink-soft:#6B6152; --ink-faint:#988E7C;
+    --brand:#1C4A3B; --brand-deep:#143729; --brand-tint:#E3ECE5;
+    --honey:#C67A1E; --honey-soft:#E0A24A; --honey-tint:#F6E7C9; --rust:#A8472A; --rust-tint:#F2DED7;
+    --pos:#2C6E49; --neg:#A8472A;
+    --line:rgba(34,28,20,.12);
+    --shadow:0 2px 6px rgba(34,28,20,.05),0 18px 40px rgba(34,28,20,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Hanken Grotesk",sans-serif;background:var(--canvas);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:920px;margin:0 auto;padding:0 22px}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  h1{font-family:"Fraunces",serif;font-weight:500;letter-spacing:-.015em;font-size:clamp(26px,4.4vw,36px);line-height:1.1}
+  h2{font-family:"Fraunces",serif;font-weight:500;font-size:19px}
+  h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px}
+  header{background:rgba(244,237,223,.92);border-bottom:1px solid rgba(34,28,20,.07);position:sticky;top:0;z-index:10;backdrop-filter:blur(6px)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{display:flex;align-items:center;gap:9px;font-family:"Fraunces",serif;font-weight:600;font-size:19px;color:var(--brand)}
+  main{padding:26px 0 80px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:22px 24px;margin-bottom:18px}
+  .hero{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 22px}
+  .hero .big{font-family:"Fraunces",serif;font-size:clamp(34px,7vw,52px);color:var(--brand);letter-spacing:-.02em}
+  .hero .lab{font-size:13px;color:var(--ink-soft)}
+  .tabbar{display:flex;gap:8px;margin:18px 0 22px;flex-wrap:wrap}
+  .tabbtn{font:inherit;font-weight:600;font-size:13.5px;border:1.5px solid var(--line);background:transparent;color:var(--ink-soft);border-radius:99px;padding:8px 17px;cursor:pointer;transition:.15s}
+  .tabbtn:hover{border-color:var(--brand);color:var(--brand)}
+  .tabbtn.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .tabpane{display:none}.tabpane.on{display:block}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td,th{padding:9px 8px 9px 0;border-bottom:1px solid rgba(34,28,20,.06);text-align:left;vertical-align:top}
+  th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .money{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  .stat{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid rgba(34,28,20,.06);font-size:14.5px}
+  .stat:last-child{border-bottom:0}
+  .stat .v{font-variant-numeric:tabular-nums;font-weight:600}
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px;background:var(--brand-tint);color:var(--brand)}
+  .chip.warn{background:var(--honey-tint);color:#6b4a12}
+  .meter{height:12px;border-radius:99px;background:var(--brand-tint);overflow:hidden;margin:10px 0 6px}
+  .meter>i{display:block;height:100%;background:linear-gradient(90deg,var(--honey-soft),var(--honey));border-radius:99px;transition:width .8s ease}
+  .banner{background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:11px 15px;font-size:13.5px;color:#6b4a12;margin-bottom:18px}
+  .entity-h{display:flex;align-items:center;gap:10px;margin:18px 0 8px}
+  .entity-h h2{font-size:17px}
+  .sub{font-size:13px;color:var(--ink-faint)}
+  .state{text-align:center;padding:70px 0}
+  .hidden{display:none}
+  .foot{font-size:12px;color:var(--ink-faint);margin-top:6px}
+  .netrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;font-size:16px;font-weight:600;border-top:2px solid var(--line);margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <span class="brand">
+      <svg width="24" height="24" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="3.2" fill="#C67A1E"/><path d="M20 13.5a6.5 6.5 0 0 1 6.5 6.5M20 8a12 12 0 0 1 12 12M20 13.5a6.5 6.5 0 0 0-6.5 6.5M20 8A12 12 0 0 0 8 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Command Center
+    </span>
+    <span class="sub" id="who"></span>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div id="loading" class="state"><p>Opening your command center…</p></div>
+
+    <div id="err" class="state hidden">
+      <span class="eyebrow">One small thing</span>
+      <h1>That link has done its hour.</h1>
+      <p class="sub" style="margin-top:8px">Text <strong>DASH</strong> to your house number for a fresh founder link, then come back.</p>
+    </div>
+
+    <div id="view" class="hidden">
+      <span class="eyebrow" id="freshness">Founder view</span>
+      <div class="hero" style="margin-top:6px">
+        <span class="big" id="hero-total">&nbsp;</span>
+        <span class="lab" id="hero-lab">liquid position</span>
+      </div>
+
+      <div id="stale-banner" class="banner hidden" style="margin-top:14px"></div>
+
+      <div class="tabbar">
+        <button class="tabbtn on" data-tab="networth">Net Worth</button>
+        <button class="tabbtn" data-tab="cashflow">Cash Flow</button>
+        <button class="tabbtn" data-tab="goals">Goals</button>
+        <button class="tabbtn" data-tab="assets">Assets</button>
+      </div>
+
+      <!-- ── NET WORTH ─────────────────────────────────────── -->
+      <div class="tabpane on" id="tab-networth">
+        <div class="card">
+          <h3>Personal accounts</h3>
+          <div id="personal-balances"></div>
+        </div>
+        <div id="business-entities"></div>
+        <div class="card">
+          <h3>Credit cards</h3>
+          <div style="overflow-x:auto"><table id="cards-table"></table></div>
+        </div>
+        <div class="card">
+          <h3>Tax &amp; remittances</h3>
+          <div id="tax-block"></div>
+        </div>
+      </div>
+
+      <!-- ── CASH FLOW ─────────────────────────────────────── -->
+      <div class="tabpane" id="tab-cashflow">
+        <div class="card">
+          <h3>Monthly cash flow</h3>
+          <div class="grid">
+            <div>
+              <div class="stat"><span>Income (normalized / mo)</span><span class="v pos" id="cf-income">—</span></div>
+              <div class="stat"><span>Payments (normalized / mo)</span><span class="v neg" id="cf-payments">—</span></div>
+            </div>
+            <div style="display:flex;align-items:center">
+              <div class="netrow" style="width:100%;border-top:0"><span>Net monthly</span><span id="cf-net">—</span></div>
+            </div>
+          </div>
+          <p class="foot">Bi-weekly × 26⁄12, Annual ÷ 12, Quarterly ÷ 3 — everything expressed as a monthly equivalent.</p>
+        </div>
+        <div class="grid">
+          <div class="card"><h3>Income</h3><div style="overflow-x:auto"><table id="income-table"></table></div></div>
+          <div class="card"><h3>Payments</h3><div style="overflow-x:auto"><table id="payments-table"></table></div></div>
+        </div>
+      </div>
+
+      <!-- ── GOALS ─────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-goals">
+        <div id="goals-list"></div>
+      </div>
+
+      <!-- ── ASSETS ────────────────────────────────────────── -->
+      <div class="tabpane" id="tab-assets">
+        <div class="card">
+          <h3>Appraised assets</h3>
+          <div style="overflow-x:auto"><table id="assets-table"></table></div>
+          <div class="netrow"><span>Total appraised</span><span id="assets-total" class="money">—</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+  var API = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/dash-api";
+  var t = new URLSearchParams(location.search).get('t') || "";
+  function show(id){ ['loading','err','view'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
+  function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+  function api(body){ return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
+  function money(n){
+    if(n==null||isNaN(n)) return '—';
+    var neg=n<0; var s='$'+Math.abs(n).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return neg?'−'+s:s;
+  }
+  function cls(n){ return n<0?'neg':(n>0?'pos':''); }
+  function MONTHLY(item){
+    var a=Number(item.amount)||0, f=(item.frequency||'').toLowerCase();
+    if(f.indexOf('bi')===0||f.indexOf('bi-')===0||f==='bi-weekly') return a*26/12;
+    if(f.indexOf('week')>=0) return a*52/12;
+    if(f.indexOf('annual')>=0||f.indexOf('year')>=0) return a/12;
+    if(f.indexOf('quarter')>=0) return a/3;
+    if(f.indexOf('semi')>=0) return a*2;
+    return a; // Monthly + default
+  }
+
+  // Tabs
+  document.querySelectorAll('.tabbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      var k=b.getAttribute('data-tab');
+      document.querySelectorAll('.tabbtn').forEach(function(x){x.classList.toggle('on',x===b);});
+      document.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('on',p.id==='tab-'+k);});
+    });
+  });
+
+  if(!t){ show('err'); }
+  else api({token:t, action:'founder_command'}).then(function(d){
+    if(!d.ok){ show('err'); return; }
+    if(d.empty){
+      show('view');
+      document.getElementById('hero-total').textContent='—';
+      document.getElementById('freshness').textContent='No snapshot yet — press “Refresh web” on the desktop.';
+      return;
+    }
+    render(d);
+    show('view');
+  }).catch(function(){ show('err'); });
+
+  function render(d){
+    var x = d.data || {};
+    var snap = x.snapshot || {};
+    var entities = {}; (x.entities||[]).forEach(function(e){ entities[e.id]=e.name; });
+
+    // Freshness
+    var cap = d.captured_at ? new Date(d.captured_at) : null;
+    document.getElementById('who').textContent = 'founder · ' + (cap?cap.toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'');
+    document.getElementById('freshness').textContent = 'As pushed from the desktop' + (cap?(' · '+cap.toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})):'');
+
+    // Hero
+    document.getElementById('hero-total').textContent = money(snap.total);
+
+    // Stale banner
+    var stale = snap.stale_sources || [];
+    if(stale.length){
+      var sb=document.getElementById('stale-banner'); sb.classList.remove('hidden');
+      sb.innerHTML = '⚠ Stale data from: <strong>'+stale.map(esc).join(', ')+'</strong> — these numbers may be behind.';
+    }
+
+    // ── Personal balances
+    var pb=document.getElementById('personal-balances');
+    var bals = snap.balances || {};
+    pb.innerHTML = Object.keys(bals).map(function(k){
+      return '<div class="stat"><span>'+esc(k)+'</span><span class="v money '+cls(bals[k])+'">'+money(bals[k])+'</span></div>';
+    }).join('') || '<p class="sub">No personal accounts.</p>';
+
+    // ── Business by entity
+    var be=document.getElementById('business-entities');
+    var biz = snap.business || {};
+    be.innerHTML = Object.keys(biz).map(function(entKey){
+      var grp = biz[entKey]||{};
+      var sections = [
+        ['Daily banking', grp.daily_banking||[]],
+        ['Credit cards', grp.credit_card||[]],
+        ['Lending', grp.lending||[]]
+      ].filter(function(s){ return s[1].length; });
+      if(!sections.length) return '';
+      var inner = sections.map(function(s){
+        var rows = s[1].map(function(a){
+          var due = a.due_date ? ' <span class="sub">· due '+esc(a.due_date)+(a.amount_due?(' '+money(a.amount_due)):'')+'</span>' : '';
+          return '<div class="stat"><span>'+esc(a.name)+due+'</span><span class="v money '+cls(a.balance)+'">'+money(a.balance)+'</span></div>';
+        }).join('');
+        return '<h3 style="margin-top:14px">'+s[0]+'</h3>'+rows;
+      }).join('');
+      return '<div class="card"><div class="entity-h"><h2>'+esc(entKey)+'</h2></div>'+inner+'</div>';
+    }).join('');
+
+    // ── Credit cards table
+    var ct=document.getElementById('cards-table');
+    var cards = snap.cards || [];
+    ct.innerHTML = '<tr><th>Card</th><th class="num">Balance</th><th class="num">Due</th><th>By</th></tr>' +
+      cards.map(function(c){
+        return '<tr><td>'+esc(c.name)+(c.last_digits?' <span class="sub">····'+esc(c.last_digits)+'</span>':'')+'</td>'+
+          '<td class="num money '+cls(c.balance)+'">'+money(c.balance)+'</td>'+
+          '<td class="num money">'+(c.amount_due?money(c.amount_due):'—')+'</td>'+
+          '<td class="sub">'+esc(c.due_date||'')+'</td></tr>';
+      }).join('');
+
+    // ── Tax
+    var qbo = snap.qbo || {};
+    var tx=document.getElementById('tax-block');
+    tx.innerHTML =
+      '<div class="stat"><span>GST payable <span class="sub">'+esc(qbo.gst_quarter||'')+'</span></span><span class="v money neg">'+money(qbo.gst_payable)+'</span></div>'+
+      (qbo.source_deductions!=null?'<div class="stat"><span>Source deductions</span><span class="v money">'+money(qbo.source_deductions)+'</span></div>':'')+
+      (snap.gst_owing_manual?'<div class="stat"><span>GST owing (manual)</span><span class="v money neg">'+money(snap.gst_owing_manual)+'</span></div>':'')+
+      (qbo.ls_clearing!=null?'<div class="stat"><span>Lightspeed clearing</span><span class="v money">'+money(qbo.ls_clearing)+'</span></div>':'');
+
+    // ── Cash flow
+    var income=x.income||[], payments=x.payments||[];
+    var inMo=income.reduce(function(s,i){return s+MONTHLY(i);},0);
+    var payMo=payments.reduce(function(s,p){return s+MONTHLY(p);},0);
+    document.getElementById('cf-income').textContent=money(inMo);
+    document.getElementById('cf-payments').textContent='−'+money(payMo).replace('−','');
+    var net=inMo-payMo;
+    var cn=document.getElementById('cf-net'); cn.textContent=money(net); cn.className=cls(net);
+    function flowTable(list){
+      return '<tr><th>Item</th><th>Freq</th><th class="num">Amount</th><th class="num">/mo</th></tr>'+
+        list.slice().sort(function(a,b){return MONTHLY(b)-MONTHLY(a);}).map(function(i){
+          return '<tr><td>'+esc(i.item)+(i.description?' <span class="sub">'+esc(i.description)+'</span>':'')+
+            (entities[i.entity_id]?' <span class="chip">'+esc(entities[i.entity_id])+'</span>':'')+'</td>'+
+            '<td class="sub">'+esc(i.frequency)+'</td>'+
+            '<td class="num money">'+money(i.amount)+'</td>'+
+            '<td class="num money">'+money(MONTHLY(i))+'</td></tr>';
+        }).join('');
+    }
+    document.getElementById('income-table').innerHTML=flowTable(income);
+    document.getElementById('payments-table').innerHTML=flowTable(payments);
+
+    // ── Goals
+    var gl=document.getElementById('goals-list');
+    var goals=x.goals||[];
+    gl.innerHTML = goals.map(function(g){
+      var target=Number(g.target)||0;
+      // The liquid position funds the Chiavari/available goals.
+      var current=Number(snap.total)||0;
+      var pct = target>0 ? Math.max(0,Math.min(100,(current/target)*100)) : 0;
+      var remain = target-current;
+      return '<div class="card">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">'+
+          '<h2>'+esc(g.name)+'</h2>'+
+          (target>0?'<span class="sub">'+money(current)+' of '+money(target)+'</span>':'<span class="sub">'+money(current)+'</span>')+
+        '</div>'+
+        (target>0?('<div class="meter"><i style="width:'+pct.toFixed(1)+'%"></i></div>'+
+          '<div class="sub">'+pct.toFixed(0)+'% there'+(remain>0?(' · '+money(remain)+' to go'):' · reached 🎉')+'</div>'):'')+
+      '</div>';
+    }).join('') || '<div class="card"><p class="sub">No goals yet.</p></div>';
+
+    // ── Assets
+    var at=document.getElementById('assets-table');
+    var assets=x.assets||[];
+    var atot=assets.reduce(function(s,a){return s+(Number(a.value)||0);},0);
+    at.innerHTML='<tr><th>Asset</th><th>Type</th><th>Appraised</th><th class="num">Value</th></tr>'+
+      assets.slice().sort(function(a,b){return (b.value||0)-(a.value||0);}).map(function(a){
+        return '<tr><td>'+esc(a.name)+(entities[a.entity_id]?' <span class="chip">'+esc(entities[a.entity_id])+'</span>':'')+'</td>'+
+          '<td class="sub">'+esc(a.type||'')+'</td><td class="sub">'+esc(a.appraised_date||'')+'</td>'+
+          '<td class="num money">'+money(a.value)+'</td></tr>';
+      }).join('');
+    document.getElementById('assets-total').textContent=money(atot);
+  }
+</script>
+</body>
+</html>
