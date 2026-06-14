@@ -201,10 +201,11 @@
 
           <div style="margin-top:14px">
             <div id="compose-preview" style="background:var(--brand-tint);border-radius:14px;padding:13px 15px;font-size:14.5px;color:var(--ink);min-height:48px;white-space:pre-wrap">(your message appears here)</div>
-            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-faint);margin-top:6px;justify-content:flex-end">
-              <span><strong id="cmp-segs">0</strong> segments</span>
-              <span><strong id="cmp-credits">0</strong> credits<span id="cmp-left-wrap"> · <strong id="cmp-left">—</strong> left</span></span>
+            <div style="display:flex;gap:8px 16px;flex-wrap:wrap;align-items:baseline;justify-content:space-between;margin-top:8px">
+              <span style="font-size:13px;color:var(--ink-soft)"><strong id="cmp-recipients">0</strong> people · <strong id="cmp-segs">0</strong> <span id="cmp-segword">segments</span> each</span>
+              <span style="font-size:15px;color:var(--ink)">≈ <strong id="cmp-cost">$0.00</strong><span id="cmp-credits-note" style="font-size:12.5px;color:var(--ink-faint)"></span></span>
             </div>
+            <div id="cmp-ucs2" style="display:none;font-size:12px;color:var(--honey);margin-top:6px"></div>
           </div>
 
           <div id="cmp-guard" style="display:none;margin-top:14px;background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:13px 15px;font-size:13.5px;color:#6b4a12"></div>
@@ -634,8 +635,7 @@
       var creditsLeft = noCap ? Infinity : Math.max(0, d.credits_total - (d.credits_used||0));
       document.getElementById('compose-to').innerHTML =
         'Sending to <strong>' + (d.audience && d.audience !== 'Clients' ? esc(d.audience) : 'your clients') + '</strong> : ' + (d.active_clients||0);
-      if(noCap){ document.getElementById('cmp-left-wrap').style.display = 'none'; }
-      else { document.getElementById('cmp-left').textContent = creditsLeft; }
+      document.getElementById('cmp-recipients').textContent = (d.active_clients||0);
 
       // Formatting rules — the desktop prototype's registry, ported.
       // slot-stage rules shape a named slot's value before the template
@@ -713,12 +713,16 @@
         return parts.join(' ').replace(/\s+([.,!?;:])/g,'$1');
       }
       // Approximate GSM segment math (server recomputes authoritatively).
+      var GSM = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+      var GSM_EXT = "|^€{}[]~\\\f";
+      function isUCS2(text){
+        for(var ch of text){ if(!GSM.includes(ch) && !GSM_EXT.includes(ch)) return true; }
+        return false;
+      }
       function segCount(text){
         if(!text) return 0;
-        var gsm = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
-        var ext = "|^€{}[]~\\\f";
         var n = 0, ok = true;
-        for(var ch of text){ if(gsm.includes(ch)) n+=1; else if(ext.includes(ch)) n+=2; else { ok=false; break; } }
+        for(var ch of text){ if(GSM.includes(ch)) n+=1; else if(GSM_EXT.includes(ch)) n+=2; else { ok=false; break; } }
         if(!ok){ var L=[...text].length; return L<=70?1:Math.ceil(L/67); }
         return n<=160?1:Math.ceil(n/153);
       }
@@ -727,11 +731,30 @@
         var full = (d.company||'') + ': ' + body;
         document.getElementById('compose-preview').textContent = body ? full : '(your message appears here)';
         var s = body ? segCount(full) : 0;
-        var cr = s * (d.active_clients||0);
+        var people = d.active_clients || 0;
+        var totalSegs = s * people;          // segment-credits across the whole send
+        var cost = totalSegs * 0.05;         // a nickel buys a hello
         document.getElementById('cmp-segs').textContent = s;
-        var crEl = document.getElementById('cmp-credits');
-        crEl.textContent = cr;
-        crEl.style.color = cr > creditsLeft ? 'var(--rust)' : '';
+        document.getElementById('cmp-segword').textContent = (s === 1 ? 'segment' : 'segments');
+        var costEl = document.getElementById('cmp-cost');
+        costEl.textContent = '$' + cost.toFixed(2);
+        // Trial plans show credits remaining + go rust when over; paid
+        // plans (no cap) just show the cost.
+        var note = document.getElementById('cmp-credits-note');
+        if(!noCap){
+          var over = totalSegs > creditsLeft;
+          note.textContent = '  ·  ' + totalSegs + ' of ' + creditsLeft + ' credits';
+          costEl.style.color = over ? 'var(--rust)' : '';
+          note.style.color = over ? 'var(--rust)' : 'var(--ink-faint)';
+        } else { note.textContent = ''; costEl.style.color = ''; }
+        // The em-dash trap, made visible: when a special character forces
+        // Unicode encoding, segments (and cost) multiply. Say so, in plain
+        // words, so nobody's scared off a send again.
+        var ucs = document.getElementById('cmp-ucs2');
+        if(body && s > 1 && isUCS2(full)){
+          ucs.style.display = 'block';
+          ucs.textContent = '⚠ A special character (an em-dash —, a curly quote, or an emoji) is making this longer than it needs to be. Plain hyphens and straight quotes keep it to one segment.';
+        } else { ucs.style.display = 'none'; }
         // Send wakes only when every pill has become prose (the
         // desktop rule: all pieces complete, at least one piece).
         var ready = instances.length > 0 && instances.every(instComplete);
