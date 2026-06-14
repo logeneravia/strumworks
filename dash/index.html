@@ -201,9 +201,12 @@
 
           <div style="margin-top:14px">
             <div id="compose-preview" style="background:var(--brand-tint);border-radius:14px;padding:13px 15px;font-size:14.5px;color:var(--ink);min-height:48px;white-space:pre-wrap">(your message appears here)</div>
-            <div style="display:flex;gap:8px 16px;flex-wrap:wrap;align-items:baseline;justify-content:space-between;margin-top:8px">
-              <span style="font-size:13px;color:var(--ink-soft)"><strong id="cmp-recipients">0</strong> people · <strong id="cmp-segs">0</strong> <span id="cmp-segword">segments</span> each</span>
-              <span style="font-size:15px;color:var(--ink)">≈ <strong id="cmp-cost">$0.00</strong><span id="cmp-credits-note" style="font-size:12.5px;color:var(--ink-faint)"></span></span>
+            <div style="display:flex;gap:4px 13px;flex-wrap:wrap;align-items:baseline;margin-top:8px;font-size:13px;color:var(--ink-soft)">
+              <span><strong id="cmp-chars">160</strong> chars left in segment</span>
+              <span>·&nbsp;<strong id="cmp-segs">0</strong> <span id="cmp-segword">segments</span></span>
+              <span style="font-size:14.5px;color:var(--ink)">·&nbsp;≈ <strong id="cmp-cost">$0.00</strong></span>
+              <span>·&nbsp;for <strong id="cmp-recipients">0</strong> messages</span>
+              <span id="cmp-credits-note" style="color:var(--ink-faint)"></span>
             </div>
             <div id="cmp-ucs2" style="display:none;font-size:12px;color:var(--honey);margin-top:6px"></div>
           </div>
@@ -726,6 +729,18 @@
         if(!ok){ var L=[...text].length; return L<=70?1:Math.ceil(L/67); }
         return n<=160?1:Math.ceil(n/153);
       }
+      // Characters left before the message tips into another segment —
+      // GSM-7 ext chars cost 2, Unicode shrinks the limit to 70/67.
+      function charLen(text){
+        if(isUCS2(text)) return [...text].length;
+        var n = 0; for(var ch of text){ n += GSM_EXT.includes(ch) ? 2 : 1; } return n;
+      }
+      function charsRemaining(text){
+        var ucs = isUCS2(text), len = charLen(text);
+        var single = ucs ? 70 : 160, multi = ucs ? 67 : 153;
+        var limit = len <= single ? single : Math.ceil(len / multi) * multi;
+        return limit - len;
+      }
       function refresh(){
         var body = assembled();
         var full = (d.company||'') + ': ' + body;
@@ -734,6 +749,7 @@
         var people = d.active_clients || 0;
         var totalSegs = s * people;          // segment-credits across the whole send
         var cost = totalSegs * 0.05;         // a nickel buys a hello
+        document.getElementById('cmp-chars').textContent = body ? charsRemaining(full) : 160;
         document.getElementById('cmp-segs').textContent = s;
         document.getElementById('cmp-segword').textContent = (s === 1 ? 'segment' : 'segments');
         var costEl = document.getElementById('cmp-cost');
