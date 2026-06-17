@@ -213,12 +213,29 @@
 
           <div id="cmp-guard" style="display:none;margin-top:14px;background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:13px 15px;font-size:13.5px;color:#6b4a12"></div>
 
+          <div id="sched-ctrl" style="margin-top:14px;background:var(--brand-tint);border-radius:13px;padding:13px 15px">
+            <div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:9px">When to send</div>
+            <label style="display:flex;align-items:center;gap:9px;font-size:14.5px;cursor:pointer;margin-bottom:9px">
+              <input type="radio" name="send-mode" value="now" style="accent-color:var(--brand);width:16px;height:16px"> Send now
+            </label>
+            <label style="display:flex;align-items:center;gap:9px;font-size:14.5px;cursor:pointer;flex-wrap:wrap">
+              <input type="radio" name="send-mode" value="schedule" style="accent-color:var(--brand);width:16px;height:16px"> Schedule for later
+              <input type="datetime-local" id="schedule-when" style="font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:9px;padding:7px 10px;background:#fff;margin-left:4px">
+            </label>
+          </div>
+
           <div style="margin-top:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end">
             <button id="cmp-clear" style="margin-right:auto;border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Start over</button>
             <span style="display:none;font-size:13.5px;color:var(--rust)" id="cmp-err"></span>
             <button class="btn" id="cmp-send" style="padding:12px 34px;font-size:15.5px">Send</button>
           </div>
           <div id="cmp-progress" style="display:none;margin-top:14px;background:var(--brand-tint);border-radius:13px;padding:13px 15px;font-size:14px"></div>
+        </div>
+
+        <div class="card hidden" id="scheduled-card">
+          <h2 style="margin-bottom:6px">Scheduled</h2>
+          <p style="font-size:14px">Queued to send. Tap a row for the full message; edit or cancel any time before it fires.</p>
+          <div id="scheduled-rows" style="margin-top:12px"></div>
         </div>
 
         <div class="card hidden" id="recent-card">
@@ -634,6 +651,7 @@
       // elements themselves stays admin-side, in the Elements room.
       var instances = [];   // {key, el|null(free), values:{}, freeText}
       var seq = 0;
+      var editingScheduleId = null;   // set when editing a queued scheduled send
       var noCap = (d.credits_total == null);
       var creditsLeft = noCap ? Infinity : Math.max(0, d.credits_total - (d.credits_used||0));
       document.getElementById('compose-to').innerHTML =
@@ -774,10 +792,21 @@
           ucs.style.display = 'block';
           ucs.textContent = '⚠ A special character (an em-dash —, a curly quote, or an emoji) is making this longer than it needs to be. Plain hyphens and straight quotes keep it to one segment.';
         } else { ucs.style.display = 'none'; }
-        // Send wakes only when every pill has become prose (the
-        // desktop rule: all pieces complete, at least one piece).
-        var ready = instances.length > 0 && instances.every(instComplete);
-        document.getElementById('cmp-send').disabled = !ready;
+        // The button wakes only when the message is complete AND a "when" is
+        // chosen — and it reads Send or Schedule to match (Chip's spec).
+        // Neither mode is pre-picked, so a send is always a deliberate act.
+        var msgReady = instances.length > 0 && instances.every(instComplete);
+        var modeEl = document.querySelector('input[name="send-mode"]:checked');
+        var mode = modeEl ? modeEl.value : '';
+        var whenEl = document.getElementById('schedule-when');
+        var futureOK = false;
+        if(mode === 'schedule' && whenEl && whenEl.value){
+          var w = new Date(whenEl.value);
+          futureOK = !isNaN(w.getTime()) && w.getTime() > Date.now() + 30000;
+        }
+        var sb = document.getElementById('cmp-send');
+        sb.textContent = (mode === 'schedule') ? (editingScheduleId ? 'Update schedule' : 'Schedule') : 'Send';
+        sb.disabled = !(msgReady && (mode === 'now' || (mode === 'schedule' && futureOK)));
       }
       // ── The living box (the desktop grammar, Chip's whiteboard) ──
       // Incomplete pieces ride as PILLS. Tap a pill → the editor sheet
@@ -1167,8 +1196,46 @@
         if(instances.length && !confirm('Clear the whole message and start over?')) return;
         instances = [];
         var sw = document.getElementById('sheetWrap'); if(sw) sw.remove();
+        // Also drop any in-progress schedule (and edit) state.
+        editingScheduleId = null;
+        document.querySelectorAll('input[name="send-mode"]').forEach(function(rb){ rb.checked = false; });
+        var swh = document.getElementById('schedule-when'); if(swh) swh.value = '';
+        document.getElementById('cmp-progress').style.display = 'none';
         renderBox(); refresh();
       });
+
+      // ── Schedule control wiring: radios + time live above the button. The
+      //    button morphs (Send/Schedule) and stays grey until a "when" is
+      //    chosen AND the message is complete (Chip's spec). All checking
+      //    happens at the press, with a human here — never at fire time.
+      document.querySelectorAll('input[name="send-mode"]').forEach(function(rb){ rb.addEventListener('change', refresh); });
+      (function(){
+        var whenEl = document.getElementById('schedule-when');
+        if(!whenEl) return;
+        whenEl.addEventListener('input', function(){
+          var sr = document.querySelector('input[name="send-mode"][value="schedule"]');
+          if(sr) sr.checked = true;   // typing a time means "schedule"
+          refresh();
+        });
+      })();
+      // Reload a queued scheduled send into the box to edit it — exposed for
+      // the Scheduled list's Edit button (a free-text piece + its time).
+      function pad2(n){ return String(n).padStart(2,'0'); }
+      function isoToLocalInput(iso){
+        var dt = new Date(iso);
+        return dt.getFullYear()+'-'+pad2(dt.getMonth()+1)+'-'+pad2(dt.getDate())+'T'+pad2(dt.getHours())+':'+pad2(dt.getMinutes());
+      }
+      window.loadScheduledIntoComposer = function(bodyText, scheduledAtISO, schedId){
+        instances = [{ key:'i'+(++seq), el:null, values:{}, freeText: String(bodyText||'') }];
+        editingScheduleId = schedId || null;
+        var sr = document.querySelector('input[name="send-mode"][value="schedule"]');
+        if(sr) sr.checked = true;
+        var whenEl = document.getElementById('schedule-when');
+        if(whenEl && scheduledAtISO){ try { whenEl.value = isoToLocalInput(scheduledAtISO); } catch(e){} }
+        document.getElementById('cmp-progress').style.display = 'none';
+        renderBox(); refresh();
+        var box = document.getElementById('compose-box'); if(box) box.scrollIntoView({behavior:'smooth', block:'center'});
+      };
 
       // Send — async-first: accepted now, truth by polling.
       var guard = document.getElementById('cmp-guard');
@@ -1210,13 +1277,29 @@
         var body = assembled();
         document.getElementById('cmp-err').style.display='none';
         if(!body){ sendErr('Build or write a message first.'); return; }
-        btn.disabled = true; btn.textContent = 'Sending…';
-        var r = await api({token:t, action:'compose_send', body:body, override:override, confirmed_big:confirmedBig,
-          // The library learns at send time (the desktop rule): each
-          // piece's slot values ride along for the Used-before tiles.
+        var modeEl2 = document.querySelector('input[name="send-mode"]:checked');
+        var mode = modeEl2 ? modeEl2.value : '';
+        if(!mode){ sendErr('Choose Send now or Schedule first.'); return; }
+        var scheduling = mode === 'schedule';
+        var verb = scheduling ? 'Schedule' : 'Send';
+        var scheduledAt = null;
+        if(scheduling){
+          var wv = document.getElementById('schedule-when').value;
+          var when = wv ? new Date(wv) : null;
+          if(!when || isNaN(when.getTime()) || when.getTime() < Date.now() + 30000){
+            sendErr('Pick a time in the future, or choose Send now.'); return;
+          }
+          scheduledAt = when.toISOString();
+        }
+        btn.disabled = true; btn.textContent = scheduling ? 'Scheduling…' : 'Sending…';
+        // The library learns at send time (the desktop rule): each piece's
+        // slot values ride along for the Used-before tiles.
+        var pl = {token:t, action: scheduling ? 'compose_schedule' : 'compose_send',
+          body:body, override:override, confirmed_big:confirmedBig,
           instances: instances.filter(function(x){ return x.el; })
-            .map(function(x){ return {element_id: x.el.id, slots: x.values}; })})
-          .catch(function(){ return {ok:false, body:{}}; });
+            .map(function(x){ return {element_id: x.el.id, slots: x.values}; })};
+        if(scheduling){ pl.scheduled_at = scheduledAt; if(editingScheduleId) pl.schedule_id = editingScheduleId; }
+        var r = await api(pl).catch(function(){ return {ok:false, body:{}}; });
         var j = r.body || {};
         if(j.needs_confirmation){
           override = true;
@@ -1225,36 +1308,49 @@
             (j.freshness.reasons||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+
             '<div style="font-weight:600">Freshen it up:</div><ul style="margin:4px 0 0 18px;padding:0">'+
             (j.freshness.suggestions||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+
-            '<div style="margin-top:8px;font-size:12.5px">Edit it above, or tap <strong>Send anyway</strong>.</div>';
-          btn.disabled=false; btn.textContent='Send anyway';
+            '<div style="margin-top:8px;font-size:12.5px">Edit it above, or tap <strong>'+verb+' anyway</strong>.</div>';
+          btn.disabled=false; btn.textContent=verb+' anyway';
           return;
         }
         if(j.needs_big_confirm){
           confirmedBig = true;
           guard.style.display='block';
-          guard.innerHTML = '<strong>That\'s a big send — '+j.recipients+' people.</strong> Tap Send once more to confirm.';
-          btn.disabled=false; btn.textContent='Send to '+j.recipients+' people';
+          guard.innerHTML = '<strong>That\'s a big send — '+j.recipients+' people.</strong> Tap '+verb+' once more to confirm.';
+          btn.disabled=false; btn.textContent=verb+' to '+j.recipients+' people';
           return;
         }
         if(j.error === 'insufficient_credits'){
           guard.style.display='block';
           guard.innerHTML = '<strong>Not enough credits</strong> — this send needs '+j.needed+' and you have '+j.left+'. Top up from Home, then come back.';
-          btn.disabled=false; btn.textContent='Send';
+          btn.disabled=false; refresh();
           return;
         }
         if(j.duplicate){
           guard.style.display='block';
           guard.innerHTML = '<strong>Already sent</strong> — an identical message went out moments ago. Not re-sent.';
-          btn.textContent='Send';
+          refresh();
           return;
         }
         if(!j.ok){
-          sendErr('Couldn\'t send: '+(j.error||'unknown'));
-          btn.disabled=false; btn.textContent='Send';
+          sendErr('Couldn\'t '+verb.toLowerCase()+': '+(j.error||j.detail||'unknown'));
+          btn.disabled=false; refresh();
           return;
         }
-        // Accepted — the server is sending. Poll the truth.
         guard.style.display='none';
+        if(scheduling){
+          // Stored, not fired. Confirm + reload so the Scheduled list shows it.
+          var local = j.scheduled_at;
+          try { local = new Date(j.scheduled_at).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}); } catch(e){}
+          var prog = document.getElementById('cmp-progress');
+          prog.style.display='block';
+          prog.innerHTML = '<strong>✓ Scheduled</strong> for '+esc(local)+' — '+(j.recipients||0)+' '+((j.recipients===1)?'person':'people')+'. It\'s in your Scheduled list; edit or cancel it any time.';
+          editingScheduleId = null;
+          setTimeout(function(){ location.reload(); }, 2200);
+          return;
+        }
+        // Sent now. If this was an edit the user chose to send NOW, retire the
+        // original scheduled copy so it doesn't also fire later.
+        if(editingScheduleId){ await api({token:t, action:'cancel_scheduled', key:editingScheduleId}).catch(function(){}); editingScheduleId=null; }
         showProgress({sent_count:0, recipient_count:j.recipients, completed_at:null});
         var found = await pollMine(body);
         if(found){ if(!showProgress(found)) trackProgress(found.id); else setTimeout(function(){ location.reload(); }, 2500); }
@@ -1696,6 +1792,52 @@
         row.addEventListener('click', function(){
           var f = row.querySelector('[data-full]');
           f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        });
+        box.appendChild(row);
+      });
+    })();
+
+    // Scheduled sends — upcoming, with edit + cancel. Modeled on Recent sends.
+    (function initScheduled(){
+      var list = d.scheduled_broadcasts || [];
+      if(!list.length) return;
+      var card = document.getElementById('scheduled-card');
+      if(!card) return;
+      card.classList.remove('hidden');
+      var box = document.getElementById('scheduled-rows');
+      list.forEach(function(b){
+        var when = '';
+        try { when = new Date(b.scheduled_at).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}); }
+        catch(e){ when = (b.scheduled_at||'').replace('T',' ').slice(0,16); }
+        var firstLine = (b.body||'').replace(/\s+/g,' ').slice(0, 80);
+        var row = document.createElement('div');
+        row.style.cssText = 'padding:11px 0;border-bottom:1px solid rgba(34,28,20,.06)';
+        row.innerHTML =
+          '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">'+
+            '<span style="font-size:12.5px;color:var(--honey);font-weight:600;white-space:nowrap">'+esc(when)+'</span>'+
+            '<span data-toggle style="flex:1;min-width:160px;font-size:14px;color:var(--ink);cursor:pointer">'+esc(firstLine)+(b.body && b.body.length > 80 ? '…' : '')+'</span>'+
+            '<span style="white-space:nowrap">'+
+              '<button data-edit style="border:0;background:none;color:var(--brand);font-size:13px;font-weight:600;cursor:pointer">Edit</button> '+
+              '<button data-cancel style="border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Cancel</button>'+
+            '</span>'+
+          '</div>'+
+          '<div data-full style="display:none;margin-top:8px;background:var(--brand-tint);border-radius:11px;padding:11px 13px;font-size:13.5px;white-space:pre-wrap">'+esc(b.body||'')+
+            '<div style="margin-top:8px;font-size:12px;color:var(--ink-soft)">'+
+              (b.recipient_count||0)+' '+((b.recipient_count===1)?'person':'people')+
+              (b.segment_count ? ' · '+b.segment_count+' segment'+(b.segment_count===1?'':'s') : '')+
+              (b.sent_by ? ' · by '+esc(b.sent_by) : '')+'</div></div>';
+        row.querySelector('[data-toggle]').addEventListener('click', function(){
+          var f = row.querySelector('[data-full]'); f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        });
+        row.querySelector('[data-edit]').addEventListener('click', function(){
+          if(window.loadScheduledIntoComposer) window.loadScheduledIntoComposer(b.body, b.scheduled_at, b.id);
+        });
+        row.querySelector('[data-cancel]').addEventListener('click', async function(){
+          if(!confirm('Cancel this scheduled send? It won\'t go out.')) return;
+          var cb = this; cb.disabled = true; cb.textContent = 'Cancelling…';
+          var rr = await api({token:t, action:'cancel_scheduled', key:b.id}).catch(function(){ return {ok:false, body:{}}; });
+          if(rr.body && rr.body.ok){ row.style.opacity='.5'; cb.textContent='Cancelled'; var eb=row.querySelector('[data-edit]'); if(eb) eb.style.display='none'; }
+          else { cb.disabled=false; cb.textContent='Cancel'; alert('Couldn\'t cancel: '+((rr.body&&(rr.body.detail||rr.body.error))||'unknown')); }
         });
         box.appendChild(row);
       });
