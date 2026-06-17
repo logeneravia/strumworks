@@ -707,13 +707,16 @@
           if(!instComplete(inst)) return;
           if(inst.el){ var r = renderTemplate(inst.el.template_text, inst.values, inst.el.rules); if(r) parts.push(r); }
           else if((inst.freeText||'').trim()){
-            // Freeflow gets the same light grooming as rendered
-            // pieces — "Cinnamon buns ." shipped a floating period
-            // on day one.
-            parts.push(inst.freeText.trim().replace(/\s+/g,' ').replace(/\s+([.,!?;:])/g,'$1'));
+            // Freeflow keeps the seeker's own line breaks — returns are
+            // SACRED in free text (Chip, June 17). Only light HORIZONTAL
+            // grooming: collapse runs of spaces, no floating period
+            // ("Cinnamon buns ." shipped one on day one), trim trailing
+            // spaces. Pills still get fully groomed into prose by
+            // renderTemplate — that path is unchanged.
+            parts.push(inst.freeText.trim().replace(/[^\S\n]+/g,' ').replace(/ ([.,!?;:])/g,'$1').replace(/ +\n/g,'\n'));
           }
         });
-        return parts.join(' ').replace(/\s+([.,!?;:])/g,'$1');
+        return parts.join(' ').replace(/[^\S\n]+([.,!?;:])/g,'$1');
       }
       // Approximate GSM segment math (server recomputes authoritatively).
       var GSM = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
