@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dash/
+Disallow: /founder/
+Disallow: /command/
+Disallow: /me/
+
+Sitemap: https://www.strumworks.com/sitemap.xml

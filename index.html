@@ -1,9 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Strum — texting that keeps your people close</title>
+<title>Strum — SMS marketing & loyalty for Canadian small businesses</title>
+<meta name="description" content="Strum is text-message marketing and loyalty for local Canadian businesses — cafés, salons, studios, and shops. Send texts your regulars are glad to get, reward repeat visits, and stay CASL-compliant. Start free.">
+<link rel="canonical" href="https://www.strumworks.com/">
+<meta name="theme-color" content="#1C4A3B">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<!-- Open Graph: rich preview when the link is shared/texted -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Strum">
+<meta property="og:url" content="https://www.strumworks.com/">
+<meta property="og:title" content="Strum — texting that keeps your people close">
+<meta property="og:description" content="Text-message marketing and loyalty for local Canadian businesses. Messages your regulars love, rewards that bring them back, CASL handled in the background.">
+<meta property="og:image" content="https://www.strumworks.com/img/how-3-dash.png">
+<meta property="og:locale" content="en_CA">
+
+<!-- Twitter / X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Strum — texting that keeps your people close">
+<meta name="twitter:description" content="SMS marketing and loyalty for local Canadian businesses — cafés, salons, studios, shops. Start free.">
+<meta name="twitter:image" content="https://www.strumworks.com/img/how-3-dash.png">
+
+<!-- Structured data: tells Google what this is -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Strum",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://www.strumworks.com/",
+  "description": "Text-message marketing and loyalty for local Canadian businesses — cafés, salons, studios, and shops. CASL-compliant SMS, customer rewards, and your own brand throughout.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "CAD",
+    "description": "Free trial — no credit card to begin."
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Strum",
+    "url": "https://www.strumworks.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Red Deer",
+      "addressRegion": "AB",
+      "addressCountry": "CA"
+    }
+  },
+  "areaServed": "CA"
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
@@ -151,7 +201,41 @@
   .ldcard .surprise em{font-style:italic;color:var(--honey)}
   .loyalty-foot{text-align:center;max-width:40em;margin:34px auto 0;font-size:17px;color:var(--ink-soft)}
   .loyalty-foot strong{color:var(--pine);font-weight:600}
+
+  /* ---- Lead-capture contact form ---- */
+  .lf-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:clamp(32px,5vw,52px);max-width:620px;margin:0 auto;box-shadow:var(--shadow)}
+  .lf-card h2{margin:12px 0 0}
+  .lf-card .lf-lede{margin-top:16px;font-size:17px}
+  .lf-field{margin-top:16px}
+  .lf-in{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;transition:.15s}
+  .lf-in:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  .lf-card .btn{width:100%;margin-top:18px}
+  .lf-fine{font-size:13px;color:var(--ink-faint);margin-top:14px;line-height:1.5}
+  .lf-codenote{font-size:16px;color:var(--ink-soft);margin-bottom:6px}
+  .lf-code{display:flex;gap:9px;margin-top:16px;max-width:360px}
+  .lf-digit{flex:1;min-width:0;text-align:center;font:inherit;font-size:24px;font-family:"Fraunces",serif;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 0;transition:.15s}
+  .lf-digit:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  .lf-honeypot{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
+  .lf-msg{border-radius:12px;padding:12px 15px;font-size:14.5px;margin-top:16px;display:none}
+  .lf-msg.err{display:block;background:#F8E7DF;color:var(--rust);border:1px solid rgba(168,71,42,.25)}
+  .lf-done{display:none;text-align:center;padding:8px 0}
+  .lf-done .lf-check{width:54px;height:54px;border-radius:99px;background:var(--pine);color:#fff;display:grid;place-items:center;margin:0 auto 18px;font-size:26px}
+  #lf-turnstile:not(:empty){margin-top:18px}
 </style>
+<script>
+  // Turnstile init. Defined in <head> before the API script so there's no load race.
+  // PASTE YOUR CLOUDFLARE TURNSTILE SITE KEY below to arm the invisible CAPTCHA.
+  // Until then the widget simply doesn't render and the server degrades to
+  // honeypot + rate-limiting (it logs a warning).
+  window.TURNSTILE_SITE_KEY = "0x4AAAAAADmwOzVJ4yJ_eZPq";
+  window.__ts = { widget: null };
+  window.onloadTurnstileCallback = function(){
+    if (window.TURNSTILE_SITE_KEY.indexOf("REPLACE_") === 0) return;
+    function r(){ try { window.__ts.widget = turnstile.render("#lf-turnstile", { sitekey: window.TURNSTILE_SITE_KEY, theme: "light" }); } catch(e){} }
+    if (document.getElementById("lf-turnstile")) r(); else document.addEventListener("DOMContentLoaded", r);
+  };
+</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback" async defer></script>
 </head>
 <body>
 
@@ -362,6 +446,47 @@
     </div>
   </section>
 
+  <section id="contact">
+    <div class="wrap">
+      <div class="lf-card reveal">
+        <span class="eyebrow">Talk to a real person</span>
+        <h2>Rather talk it through first?</h2>
+        <p class="lf-lede">Leave your number and I'll call or text you back myself — usually the same day. No bots, no funnel: it's small enough right now that you get me, the person who built it. — Paul</p>
+
+        <form id="lf-form" novalidate>
+          <div class="lf-field"><input class="lf-in" id="lf-name" type="text" placeholder="Your name" autocomplete="name"></div>
+          <div class="lf-field"><input class="lf-in" id="lf-business" type="text" placeholder="Your shop or business" autocomplete="organization"></div>
+          <div class="lf-field"><input class="lf-in" id="lf-phone" type="tel" inputmode="tel" placeholder="Mobile number" autocomplete="tel"></div>
+          <div class="lf-honeypot" aria-hidden="true"><input id="lf-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+          <div id="lf-turnstile"></div>
+          <button class="btn pine" id="lf-send" type="submit">Send me a quick hello &rarr;</button>
+          <p class="lf-fine">Not a marketing list — just so I can reach you. We verify every number, which keeps your future list clean too. 🔒</p>
+        </form>
+
+        <form id="lf-codeform" novalidate hidden>
+          <p class="lf-codenote">Check your texts — pop in the 6 digits. That little hello? That's exactly what your customers will feel.</p>
+          <div class="lf-code">
+            <input class="lf-digit" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="digit 1">
+            <input class="lf-digit" inputmode="numeric" maxlength="1" aria-label="digit 2">
+            <input class="lf-digit" inputmode="numeric" maxlength="1" aria-label="digit 3">
+            <input class="lf-digit" inputmode="numeric" maxlength="1" aria-label="digit 4">
+            <input class="lf-digit" inputmode="numeric" maxlength="1" aria-label="digit 5">
+            <input class="lf-digit" inputmode="numeric" maxlength="1" aria-label="digit 6">
+          </div>
+          <button class="btn pine" id="lf-verify" type="submit">Confirm</button>
+          <p class="lf-fine"><a href="#contact" id="lf-resend" style="color:var(--pine);font-weight:600">Didn't get it? Resend.</a></p>
+        </form>
+
+        <div class="lf-msg" id="lf-msg"></div>
+        <div class="lf-done" id="lf-done">
+          <div class="lf-check">&#10003;</div>
+          <h2 style="font-size:26px">You're real — and we're glad.</h2>
+          <p style="margin-top:12px">Paul will reach out personally, usually within a day. Talk soon.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="final" id="start">
     <div class="wrap reveal">
       <span class="eyebrow">Start free</span>
@@ -369,7 +494,7 @@
       <p>Set up your shop today and send your first strum this week. No credit card to begin.</p>
       <div class="cta" style="justify-content:center;display:flex;gap:14px;flex-wrap:wrap">
         <a href="/start/" class="btn pine">Create your account</a>
-        <a href="#" class="btn ghost">Book a 10-minute look</a>
+        <a href="#contact" class="btn ghost">Book a 10-minute look</a>
       </div>
     </div>
   </section>
@@ -387,7 +512,7 @@
     <div class="cols">
       <div class="col"><h4>Product</h4><a href="#how">How it works</a><a href="#loyalty">Loyalty</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div>
       <div class="col"><h4>Trust</h4><a href="#">CASL &amp; consent</a><a href="#">Privacy</a><a href="#">Security</a></div>
-      <div class="col"><h4>Company</h4><a href="#why">Why Strum</a><a href="#start">Get early access</a><a href="#">Contact</a></div>
+      <div class="col"><h4>Company</h4><a href="#why">Why Strum</a><a href="#start">Get early access</a><a href="#contact">Contact</a></div>
     </div>
     <div class="made">
       <span>© 2026 Strum. Made in Red Deer, Alberta.</span>
@@ -401,6 +526,92 @@
   addEventListener('scroll',function(){hdr.classList.toggle('scrolled',scrollY>12);});
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
   document.querySelectorAll('.reveal:not(.in)').forEach(function(el){io.observe(el);});
+</script>
+<script>
+(function(){
+  var FN = "https://migitrhwuefeontgakoj.supabase.co/functions/v1";
+  var leadPhone = "";
+  var form = document.getElementById('lf-form');
+  if (!form) return;
+  var codeForm = document.getElementById('lf-codeform');
+  var msg = document.getElementById('lf-msg');
+  var done = document.getElementById('lf-done');
+  var sendBtn = document.getElementById('lf-send');
+  var verifyBtn = document.getElementById('lf-verify');
+  var digits = Array.prototype.slice.call(document.querySelectorAll('.lf-digit'));
+
+  function show(kind, text){ msg.className = 'lf-msg ' + kind; msg.textContent = text; }
+  function clearMsg(){ msg.className = 'lf-msg'; msg.textContent = ''; }
+  function turnstileToken(){ try { return (window.__ts && window.__ts.widget !== null && window.turnstile) ? turnstile.getResponse(window.__ts.widget) : ""; } catch(e){ return ""; } }
+  function resetTurnstile(){ try { if (window.__ts && window.__ts.widget !== null && window.turnstile) turnstile.reset(window.__ts.widget); } catch(e){} }
+  function submitCode(){ if (codeForm.requestSubmit) codeForm.requestSubmit(); else verifyBtn.click(); }
+
+  digits.forEach(function(d, i){
+    d.addEventListener('input', function(){
+      d.value = d.value.replace(/\D/g,'').slice(0,1);
+      if (d.value && i < digits.length - 1) digits[i+1].focus();
+      if (digits.every(function(x){ return x.value; })) submitCode();
+    });
+    d.addEventListener('keydown', function(e){ if (e.key === 'Backspace' && !d.value && i > 0) digits[i-1].focus(); });
+    d.addEventListener('paste', function(e){
+      var t = ((e.clipboardData||window.clipboardData).getData('text')||'').replace(/\D/g,'').slice(0,6);
+      if (!t) return;
+      e.preventDefault();
+      t.split('').forEach(function(c,j){ if (digits[j]) digits[j].value = c; });
+      digits[Math.min(t.length,5)].focus();
+      if (t.length === 6) submitCode();
+    });
+  });
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault(); clearMsg();
+    var name = document.getElementById('lf-name').value.trim();
+    var business = document.getElementById('lf-business').value.trim();
+    var phone = document.getElementById('lf-phone').value.trim();
+    var website = document.getElementById('lf-website').value;
+    if (!name) return show('err', "Tell me your name so I know who I'm calling.");
+    if (phone.replace(/\D/g,'').length < 10) return show('err', "That mobile needs 10 digits — it's where your code lands.");
+    sendBtn.disabled = true; sendBtn.textContent = "Sending your code…";
+    leadPhone = phone;
+    fetch(FN + "/lead-request-code", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ name:name, business:business, phone:phone, website:website, turnstile_token:turnstileToken() })
+    })
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, body:j }; }); })
+    .then(function(res){
+      sendBtn.disabled = false; sendBtn.textContent = "Send me a quick hello →";
+      if (res.ok && res.body && res.body.ok){
+        form.hidden = true; codeForm.hidden = false; clearMsg();
+        if (digits[0]) digits[0].focus();
+      } else {
+        show('err', (res.body && res.body.detail) || "Something hiccuped — give it another try.");
+        resetTurnstile();
+      }
+    })
+    .catch(function(){ sendBtn.disabled = false; sendBtn.textContent = "Send me a quick hello →"; show('err', "Couldn't reach us — check your connection and try again."); });
+  });
+
+  codeForm.addEventListener('submit', function(ev){
+    ev.preventDefault(); clearMsg();
+    var code = digits.map(function(d){ return d.value; }).join('');
+    if (code.replace(/\D/g,'').length !== 6) return show('err', "Pop in all six digits.");
+    verifyBtn.disabled = true; verifyBtn.textContent = "Confirming…";
+    fetch(FN + "/lead-verify-code", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ phone:leadPhone, code:code })
+    })
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, body:j }; }); })
+    .then(function(res){
+      verifyBtn.disabled = false; verifyBtn.textContent = "Confirm";
+      if (res.ok && res.body && res.body.ok){ codeForm.hidden = true; clearMsg(); done.style.display = 'block'; }
+      else { show('err', (res.body && res.body.detail) || "That didn't work — try again."); digits.forEach(function(d){ d.value=''; }); if (digits[0]) digits[0].focus(); }
+    })
+    .catch(function(){ verifyBtn.disabled = false; verifyBtn.textContent = "Confirm"; show('err', "Couldn't reach us — check your connection and try again."); });
+  });
+
+  var resend = document.getElementById('lf-resend');
+  if (resend) resend.addEventListener('click', function(e){ e.preventDefault(); codeForm.hidden = true; form.hidden = false; clearMsg(); digits.forEach(function(d){ d.value=''; }); });
+})();
 </script>
 </body>
 </html>
