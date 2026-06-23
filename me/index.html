@@ -64,11 +64,14 @@
       <div class="brandline" id="su-company">&nbsp;</div>
       <span class="eyebrow">Almost there</span>
       <h1>What should we call you?</h1>
-      <p style="margin:10px 0 20px">Just a first name — so the hellos sound like they know you.</p>
+      <p style="margin:10px 0 20px">Just your name — so the hellos sound like they know you.</p>
       <div class="card">
         <div class="msg" id="su-err"></div>
-        <label for="su-first">First name</label>
-        <input type="text" id="su-first" autocomplete="given-name">
+        <label>Your name</label>
+        <div class="row">
+          <input type="text" id="su-first" placeholder="First" autocomplete="given-name">
+          <input type="text" id="su-last" placeholder="Last" autocomplete="family-name">
+        </div>
         <button class="btn" id="su-go" style="margin-top:16px">I'm in</button>
       </div>
     </div>
@@ -237,11 +240,11 @@
     fillSelects(); wireDash();
     if(d.onboarded){ paintDash(d); show('dash'); return; }
     document.getElementById('su-go').addEventListener('click', function(){
-      var btn=this, first=document.getElementById('su-first').value.trim(), eb=document.getElementById('su-err'); eb.style.display='none';
+      var btn=this, first=document.getElementById('su-first').value.trim(), last=document.getElementById('su-last').value.trim(), eb=document.getElementById('su-err'); eb.style.display='none';
       if(!first){ eb.textContent="Just need your first name."; eb.style.display='block'; return; }
       btn.disabled=true; btn.textContent="One sec…";
-      api({token:t, action:"complete_client_signup", key:first}).then(function(r){
-        if(r.body.ok){ d.first_name=first; paintDash(d); show('dash'); }
+      api({token:t, action:"complete_client_signup", key:first, body:last}).then(function(r){
+        if(r.body.ok){ d.first_name=first; if(last) d.last_name=last; paintDash(d); show('dash'); }
         else { btn.disabled=false; btn.textContent="I'm in"; eb.textContent="Hmm — that didn't take. One more try?"; eb.style.display='block'; }
       }).catch(function(){ btn.disabled=false; btn.textContent="I'm in"; eb.textContent="Couldn't reach the server — try again."; eb.style.display='block'; });
     });
