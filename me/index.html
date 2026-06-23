@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Finish signing up</title>
+<title>Your spot</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,27 +17,41 @@
     --shadow:0 2px 6px rgba(34,28,20,.05),0 18px 40px rgba(34,28,20,.08);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:"Hanken Grotesk",sans-serif;background:var(--canvas);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:grid;place-items:start center;padding:clamp(24px,6vw,60px) 20px}
-  .eyebrow{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--honey)}
-  h1{font-family:"Fraunces",serif;font-weight:500;letter-spacing:-.015em;line-height:1.12;font-size:clamp(24px,5vw,32px)}
-  p{color:var(--ink-soft);font-size:15.5px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:clamp(26px,5vw,40px);max-width:480px;width:100%}
-  .brandline{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-weight:600;font-size:20px;color:var(--brand);margin-bottom:20px}
-  label{display:block;font-size:14px;font-weight:600;margin:0 0 6px}
-  .field{margin-bottom:16px}
-  input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:13px 15px}
-  input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  body{font-family:"Hanken Grotesk",sans-serif;background:var(--canvas);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:grid;place-items:start center;padding:clamp(24px,6vw,56px) 18px}
+  .wrap{max-width:440px;width:100%}
+  .eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--honey)}
+  h1{font-family:"Fraunces",serif;font-weight:500;letter-spacing:-.015em;line-height:1.12;font-size:clamp(23px,5vw,30px)}
+  p{color:var(--ink-soft);font-size:15px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:clamp(22px,5vw,28px)}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px}
+  .sub{font-weight:400;color:var(--ink-faint)}
+  input,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px}
+  input:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  .field{margin-bottom:15px}
   .hint{font-size:12.5px;color:var(--ink-faint);margin-top:4px}
-  .btn{display:inline-flex;align-items:center;justify-content:center;font:inherit;font-weight:600;font-size:16px;border:0;border-radius:13px;padding:14px 26px;cursor:pointer;background:var(--brand);color:#fff;width:100%;transition:.18s}
+  .row{display:flex;gap:10px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;font:inherit;font-weight:600;font-size:16px;border:0;border-radius:12px;padding:13px 22px;cursor:pointer;background:var(--brand);color:#fff;width:100%;transition:.18s}
   .btn:hover{background:var(--brand-deep)}
   .btn[disabled]{opacity:.6;cursor:wait}
-  .msg{border-radius:12px;padding:12px 15px;font-size:14px;margin-bottom:16px;display:none;background:#F8E7DF;color:var(--rust)}
-  .state{text-align:center;padding:30px 6px}
+  .btn-soft{background:transparent;color:var(--brand);border:1.5px solid var(--line)}
+  .btn-soft:hover{background:var(--brand-tint)}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tab{flex:1;font:inherit;font-size:13.5px;font-weight:600;border:1.5px solid var(--line);border-radius:11px;padding:10px 0;cursor:pointer;background:#fff;color:var(--ink-soft);text-align:center}
+  .tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .saved{display:none;font-size:13.5px;color:var(--brand);font-weight:600;margin-left:10px}
+  .msg{border-radius:11px;padding:11px 14px;font-size:14px;margin-bottom:14px;display:none;background:#F8E7DF;color:var(--rust)}
   .hidden{display:none}
+  .state{text-align:center;padding:30px 6px}
+  .divider{height:1px;background:var(--line);margin:20px 0}
+  .empty{text-align:center;padding:26px 10px}
+  .empty .ic{font-size:30px}
+  .brandline{font-family:"Fraunces",serif;font-weight:600;font-size:19px;color:var(--brand);margin-bottom:6px}
+  .center{text-align:center}
+  .muted{font-size:12.5px;color:var(--ink-faint)}
 </style>
 </head>
 <body>
-  <div class="card">
+  <div class="wrap">
     <div id="loading" class="state"><p>One moment…</p></div>
 
     <div id="err" class="state hidden">
@@ -46,68 +60,192 @@
       <p style="margin-top:10px">Text <strong>DASH</strong> to the same number and a fresh one arrives in seconds.</p>
     </div>
 
-    <div id="view" class="hidden">
-      <div class="brandline" id="company">&nbsp;</div>
+    <div id="signup" class="hidden">
+      <div class="brandline" id="su-company">&nbsp;</div>
       <span class="eyebrow">Almost there</span>
-      <h1>Finish signing up.</h1>
-      <p style="margin:10px 0 22px">Just your name — so the hellos sound like they know you.</p>
-
-      <div class="msg" id="errbox"></div>
-
-      <div class="field">
-        <label for="first">First name</label>
-        <input type="text" id="first" autocomplete="given-name">
+      <h1>What should we call you?</h1>
+      <p style="margin:10px 0 20px">Just a first name — so the hellos sound like they know you.</p>
+      <div class="card">
+        <div class="msg" id="su-err"></div>
+        <label for="su-first">First name</label>
+        <input type="text" id="su-first" autocomplete="given-name">
+        <button class="btn" id="su-go" style="margin-top:16px">I'm in</button>
       </div>
-      <div class="field">
-        <label for="last">Last name</label>
-        <input type="text" id="last" autocomplete="family-name">
-      </div>
-      <div class="field">
-        <label for="email">Email <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
-        <input type="email" id="email" autocomplete="email">
-        <div class="hint">Only if you'd like a second way to hear from us.</div>
-      </div>
-      <button class="btn" id="go">I'm in</button>
     </div>
 
-    <div id="done" class="state hidden">
-      <span class="eyebrow" id="done-company">&nbsp;</span>
-      <h1 id="done-head">You're in. 🎉</h1>
-      <p style="margin-top:12px">Watch your texts — your confirmation is on its way.</p>
+    <div id="dash" class="hidden">
+      <div class="brandline" id="d-company">&nbsp;</div>
+      <h1 id="d-hello">Hi.</h1>
+      <p style="margin:7px 0 18px">This little corner is yours.</p>
+
+      <div class="tabs">
+        <button class="tab on" data-tab="you">You</button>
+        <button class="tab" data-tab="rewards">Rewards</button>
+        <button class="tab" data-tab="tunein">Tune in</button>
+      </div>
+
+      <div class="card" data-panel="you">
+        <div class="msg" id="you-err"></div>
+        <label>Your name</label>
+        <div class="row field">
+          <input type="text" id="d-first" placeholder="First" autocomplete="given-name">
+          <input type="text" id="d-last" placeholder="Last" autocomplete="family-name">
+        </div>
+        <div class="field">
+          <label for="d-email">Email <span class="sub">· optional</span></label>
+          <input type="email" id="d-email" autocomplete="email" placeholder="you@example.com">
+          <div class="hint">A second way to reach you, beyond texts.</div>
+        </div>
+        <div class="field">
+          <label>Birthday <span class="sub">· just the day, no year</span></label>
+          <div class="row">
+            <select id="d-bmonth" style="flex:2"></select>
+            <select id="d-bday" style="flex:1"></select>
+          </div>
+          <div class="hint">For a little something on your day.</div>
+        </div>
+        <div style="display:flex;align-items:center"><button class="btn" id="d-save" style="width:auto">Save</button><span class="saved" id="d-saved">Saved ✓</span></div>
+
+        <div class="divider"></div>
+
+        <div id="pause-off">
+          <label>Need a quiet stretch?</label>
+          <p style="font-size:13.5px;margin-bottom:10px">Pause every text until a date you choose — we'll be right here, and it picks back up on its own.</p>
+          <div class="row" style="align-items:center">
+            <input type="date" id="d-pausedate" style="flex:1">
+            <button class="btn btn-soft" id="d-pause" style="width:auto;white-space:nowrap">Pause</button>
+          </div>
+        </div>
+        <div id="pause-on" class="hidden">
+          <label>You're paused.</label>
+          <p style="font-size:13.5px;margin-bottom:10px">Quiet until <strong id="pause-until-label"></strong>. We'll pick back up then — or sooner, if you like.</p>
+          <button class="btn btn-soft" id="d-resume" style="width:auto">Resume now</button>
+        </div>
+      </div>
+
+      <div class="card hidden" data-panel="rewards">
+        <div class="empty">
+          <div class="ic">🎁</div>
+          <h1 style="font-size:19px;margin-top:8px">Rewards live here.</h1>
+          <p style="margin-top:6px">Earn a little with every visit — your menu of treats is on its way.</p>
+        </div>
+      </div>
+
+      <div class="card hidden" data-panel="tunein">
+        <div class="empty">
+          <div class="ic">🎶</div>
+          <h1 style="font-size:19px;margin-top:8px">Tune in.</h1>
+          <p style="margin-top:6px">Soon you'll choose which of our strums you want to feel — the lunch menu, news, specials, the odd bit of fun. Coming next.</p>
+        </div>
+      </div>
+
+      <p class="center muted" style="margin-top:16px">Text <strong style="color:var(--ink-soft)">DASH</strong> any time to come back here.</p>
     </div>
   </div>
 
 <script>
   var API = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/dash-api";
   var t = new URLSearchParams(location.search).get('t') || "";
-  function show(id){ ['loading','err','view','done'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function show(id){ ['loading','err','signup','dash'].forEach(function(x){ document.getElementById(x).classList.toggle('hidden', x!==id); }); }
   function darken(hex,f){ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; function d(v){return Math.max(0,Math.round(v*(1-f)));} return '#'+((1<<24)+(d(r)<<16)+(d(g)<<8)+d(b)).toString(16).slice(1); }
   function applyBrand(hex){ if(!/^#[0-9a-fA-F]{6}$/.test(hex)) return; var rs=document.documentElement.style; rs.setProperty('--brand',hex); rs.setProperty('--brand-deep',darken(hex,.25)); }
   function api(body){ return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,body:j};});}); }
+  function reveal(id){ var s=document.getElementById(id); s.style.display='inline'; setTimeout(function(){s.style.display='none';},2500); }
+
+  function fillSelects(){
+    var m=document.getElementById('d-bmonth'); m.innerHTML='<option value="">Month</option>';
+    MONTHS.forEach(function(name,i){ m.insertAdjacentHTML('beforeend','<option value="'+(i+1)+'">'+name+'</option>'); });
+    var d=document.getElementById('d-bday'); d.innerHTML='<option value="">Day</option>';
+    for(var i=1;i<=31;i++){ d.insertAdjacentHTML('beforeend','<option value="'+i+'">'+i+'</option>'); }
+  }
+
+  function paintPause(until){
+    var on=document.getElementById('pause-on'), off=document.getElementById('pause-off');
+    var today=new Date().toISOString().slice(0,10);
+    if(until && until>=today){
+      on.classList.remove('hidden'); off.classList.add('hidden');
+      var dt=new Date(until+"T00:00:00");
+      document.getElementById('pause-until-label').textContent=dt.toLocaleDateString(undefined,{month:'long',day:'numeric'});
+    } else {
+      on.classList.add('hidden'); off.classList.remove('hidden');
+      document.getElementById('d-pausedate').min=today;
+    }
+  }
+
+  function paintDash(d){
+    document.getElementById('d-company').textContent=d.company||"";
+    document.getElementById('d-hello').textContent="Hi"+(d.first_name?(" "+d.first_name):"")+".";
+    document.getElementById('d-first').value=d.first_name||"";
+    document.getElementById('d-last').value=d.last_name||"";
+    document.getElementById('d-email').value=d.email||"";
+    if(d.birthday && /^\d{4}-\d{2}-\d{2}$/.test(d.birthday)){
+      document.getElementById('d-bmonth').value=String(parseInt(d.birthday.slice(5,7),10));
+      document.getElementById('d-bday').value=String(parseInt(d.birthday.slice(8,10),10));
+    }
+    paintPause(d.paused_until);
+  }
+
+  function wireDash(){
+    document.querySelectorAll('.tab').forEach(function(tab){
+      tab.addEventListener('click',function(){
+        var name=tab.getAttribute('data-tab');
+        document.querySelectorAll('.tab').forEach(function(x){ x.classList.toggle('on', x===tab); });
+        document.querySelectorAll('[data-panel]').forEach(function(p){ p.classList.toggle('hidden', p.getAttribute('data-panel')!==name); });
+      });
+    });
+    document.getElementById('d-save').addEventListener('click', function(){
+      var btn=this, eb=document.getElementById('you-err'); eb.style.display='none';
+      var first=document.getElementById('d-first').value.trim();
+      if(!first){ eb.textContent="Just need your first name."; eb.style.display='block'; return; }
+      btn.disabled=true; btn.textContent="Saving…";
+      api({token:t, action:"update_client_profile", first_name:first,
+        last_name:document.getElementById('d-last').value.trim(),
+        email:document.getElementById('d-email').value.trim(),
+        birthday_month:document.getElementById('d-bmonth').value,
+        birthday_day:document.getElementById('d-bday').value }).then(function(r){
+        btn.disabled=false; btn.textContent="Save";
+        if(r.body.ok){ document.getElementById('d-hello').textContent="Hi "+first+"."; reveal('d-saved'); }
+        else { eb.textContent="That didn't save — try again?"; eb.style.display='block'; }
+      }).catch(function(){ btn.disabled=false; btn.textContent="Save"; });
+    });
+    document.getElementById('d-pause').addEventListener('click', function(){
+      var date=document.getElementById('d-pausedate').value;
+      if(!date){ alert("Pick a date to pause until."); return; }
+      var btn=this; btn.disabled=true; btn.textContent="…";
+      api({token:t, action:"set_client_pause", paused_until:date}).then(function(r){
+        btn.disabled=false; btn.textContent="Pause";
+        if(r.body.ok){ paintPause(date); } else { alert("Couldn't set the pause — try again."); }
+      }).catch(function(){ btn.disabled=false; btn.textContent="Pause"; });
+    });
+    document.getElementById('d-resume').addEventListener('click', function(){
+      var btn=this; btn.disabled=true; btn.textContent="…";
+      api({token:t, action:"set_client_pause", paused_until:""}).then(function(r){
+        btn.disabled=false; btn.textContent="Resume now";
+        if(r.body.ok){ paintPause(null); } else { alert("Couldn't resume — try again."); }
+      }).catch(function(){ btn.disabled=false; btn.textContent="Resume now"; });
+    });
+  }
 
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
     if(!res.ok || !res.body.ok || res.body.role!=='client'){ show('err'); return; }
-    var d = res.body;
+    var d=res.body;
     if(d.brand_colour) applyBrand(d.brand_colour);
-    document.getElementById('company').textContent = d.company;
-    document.getElementById('done-company').textContent = d.company;
-    document.getElementById('first').value = d.first_name || "";
-    document.getElementById('last').value = d.last_name || "";
-    document.getElementById('email').value = d.email || "";
-    document.getElementById('go').addEventListener('click', function(){
-      var btn=this, first=document.getElementById('first').value.trim(),
-          last=document.getElementById('last').value.trim(),
-          email=document.getElementById('email').value.trim();
-      var eb=document.getElementById('errbox'); eb.style.display='none';
+    document.getElementById('su-company').textContent=d.company||"";
+    fillSelects(); wireDash();
+    if(d.onboarded){ paintDash(d); show('dash'); return; }
+    document.getElementById('su-go').addEventListener('click', function(){
+      var btn=this, first=document.getElementById('su-first').value.trim(), eb=document.getElementById('su-err'); eb.style.display='none';
       if(!first){ eb.textContent="Just need your first name."; eb.style.display='block'; return; }
       btn.disabled=true; btn.textContent="One sec…";
-      api({token:t, action:"complete_client_signup", key:first, body:last, email:email}).then(function(r){
-        if(r.body.ok){ document.getElementById('done-head').textContent="You're in, "+first+". 🎉"; show('done'); }
+      api({token:t, action:"complete_client_signup", key:first}).then(function(r){
+        if(r.body.ok){ d.first_name=first; paintDash(d); show('dash'); }
         else { btn.disabled=false; btn.textContent="I'm in"; eb.textContent="Hmm — that didn't take. One more try?"; eb.style.display='block'; }
       }).catch(function(){ btn.disabled=false; btn.textContent="I'm in"; eb.textContent="Couldn't reach the server — try again."; eb.style.display='block'; });
     });
-    show('view');
+    show('signup');
   }).catch(function(){ show('err'); });
 </script>
 </body>
