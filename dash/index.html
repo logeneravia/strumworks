@@ -592,6 +592,19 @@
       });
     });
 
+    // Client welcome (the join confirmation new clients get) — load + save.
+    document.getElementById('cw').value = d.client_welcome || "";
+    document.getElementById('cw-save').addEventListener('click', function(){
+      var btn=this, cw=document.getElementById('cw').value.trim();
+      if(!cw) return alert("The welcome can't be empty — it's what greets every new client.");
+      btn.disabled=true; btn.textContent="Saving…";
+      api({token:t, action:"update_client_welcome", body:cw}).then(function(r){
+        btn.disabled=false; btn.textContent="Save";
+        if(r.body.ok){ var s=document.getElementById('cw-saved'); s.style.display='inline'; setTimeout(function(){s.style.display='none';},2500); }
+        else alert("Save failed: "+(r.body.error||'unknown'));
+      });
+    });
+
     // Logo upload.
     document.getElementById('logo-upload').addEventListener('click', function(){
       var btn=this, f=document.getElementById('logo-file').files[0],
