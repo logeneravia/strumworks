@@ -48,6 +48,36 @@
   .brandline{font-family:"Fraunces",serif;font-weight:600;font-size:19px;color:var(--brand);margin-bottom:6px}
   .center{text-align:center}
   .muted{font-size:12.5px;color:var(--ink-faint)}
+  /* Rewards & Connection */
+  .rw-credits{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:22px 24px;text-align:center;margin-bottom:14px}
+  .rw-credits .num{font-family:"Fraunces",serif;font-weight:500;font-size:34px;color:var(--ink);line-height:1}
+  .rw-credits .nudge{font-size:13.5px;color:var(--ink-faint);margin-top:9px}
+  .rw-fund{background:var(--brand-tint);border-radius:18px;padding:18px 20px;margin-bottom:24px}
+  .rw-fund .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .rw-fund .label{font-weight:600;color:var(--brand-deep);font-size:15px}
+  .rw-fund .climb{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--brand);font-weight:600;white-space:nowrap}
+  .rw-fund .amt{font-family:"Fraunces",serif;font-weight:500;font-size:30px;color:var(--brand-deep);margin:8px 0 3px}
+  .rw-fund .sub{font-size:13.5px;color:var(--brand)}
+  .rw-q{font-family:"Fraunces",serif;font-weight:500;font-size:21px;margin:0 2px 8px}
+  .rw-row{display:flex;align-items:center;gap:13px;padding:15px 4px;border-top:1px solid var(--line)}
+  .rw-row.first{border-top:0}
+  .rw-star{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:#fff;cursor:pointer;display:grid;place-items:center;color:#fff;font-size:12px;transition:.18s;padding:0}
+  .rw-row.on .rw-star{background:var(--honey);border-color:var(--honey)}
+  .rw-mid{flex:1;min-width:0}
+  .rw-name{font-weight:600;font-size:15.5px;color:var(--ink)}
+  .rw-meta{font-size:13px;color:var(--ink-faint);margin-top:1px}
+  .rw-end{flex:0 0 auto;text-align:right}
+  .rw-togo{font-size:13.5px;font-weight:600;color:var(--honey)}
+  .rw-row.on{background:var(--honey-tint);border-radius:14px;border-top-color:transparent;padding:14px 13px;margin:5px 0}
+  .rw-redeem{font:inherit;font-weight:600;font-size:14px;color:#fff;background:var(--brand);border:0;border-radius:10px;padding:9px 17px;cursor:pointer;transition:.18s}
+  .rw-redeem:hover{background:var(--brand-deep)}
+  .rw-pitch{width:100%;margin-top:18px;border:1.5px dashed var(--line);background:transparent;border-radius:14px;padding:15px;font:inherit;font-weight:600;font-size:15px;color:var(--brand);cursor:pointer}
+  .rw-pitch:hover{background:var(--brand-tint)}
+  .rw-friend{text-align:center;font-size:13px;color:var(--ink-faint);margin-top:16px}
+  .rw-pass{background:var(--brand-deep);color:#fff;border-radius:14px;padding:15px 18px;margin-bottom:16px;text-align:center}
+  .rw-pass .pn{font-weight:600;font-size:16px}
+  .rw-pass .pt{font-size:13px;opacity:.85;margin-top:3px}
+  .rw-pass .pc{font-family:"Fraunces",serif;font-size:22px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -126,11 +156,13 @@
         </div>
       </div>
 
-      <div class="card hidden" data-panel="rewards">
-        <div class="empty">
-          <div class="ic">🎁</div>
-          <h1 style="font-size:19px;margin-top:8px">Rewards live here.</h1>
-          <p style="margin-top:6px">Earn a little with every visit — your menu of treats is on its way.</p>
+      <div class="hidden" data-panel="rewards" id="rwpanel">
+        <div class="card">
+          <div class="empty">
+            <div class="ic">🎁</div>
+            <h1 style="font-size:19px;margin-top:8px">Rewards live here.</h1>
+            <p style="margin-top:6px">Earn a little with every visit — your menu of treats is on its way.</p>
+          </div>
         </div>
       </div>
 
@@ -196,6 +228,7 @@
         var name=tab.getAttribute('data-tab');
         document.querySelectorAll('.tab').forEach(function(x){ x.classList.toggle('on', x===tab); });
         document.querySelectorAll('[data-panel]').forEach(function(p){ p.classList.toggle('hidden', p.getAttribute('data-panel')!==name); });
+        if(name==='rewards') animateRewards();
       });
     });
     document.getElementById('d-save').addEventListener('click', function(){
@@ -240,6 +273,103 @@
     if(tab) tab.click();
   }
 
+  // ── Rewards & Connection ──────────────────────────────────────────
+  var curLoyalty=null, rewardsAnimated=false;
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function money(cents){ return '$'+Math.round((cents||0)/100).toLocaleString(); }
+
+  function paintRewards(L){
+    var panel=document.getElementById('rwpanel');
+    if(!L){ return; } // no loyalty for this workspace — keep the gentle placeholder
+    curLoyalty=L;
+    var cur=L.currency||'credits', h='';
+    h+='<div class="rw-credits"><div class="num" data-n="'+L.balance+'" data-cur="'+esc(cur)+'">'+L.balance+' '+esc(cur)+'</div>'+
+       '<div class="nudge">'+esc(L.scan_nudge||'Scan at the till each visit.')+'</div></div>';
+    if(L.endowment){
+      h+='<div class="rw-fund"><div class="top"><span class="label">'+esc(L.endowment.label)+'</span><span class="climb">climbing</span></div>'+
+         '<div class="amt">'+money(L.endowment.amount_cents)+'</div>'+
+         '<div class="sub">'+(L.endowment.builders||0)+' of us building it — together.</div></div>';
+    }
+    h+='<div class="rw-q">What would you most love?</div>';
+    (L.rewards||[]).forEach(function(r,i){
+      var meta=r.hoping+' hoping'+(r.starred?' for this':'')+' · '+r.cost+' '+esc(cur);
+      h+='<div class="rw-row'+(r.starred?' on':'')+(i===0?' first':'')+'" data-id="'+r.id+'">'+
+         '<button class="rw-star" data-act="star" aria-label="Choose this">'+(r.starred?'★':'')+'</button>'+
+         '<div class="rw-mid"><div class="rw-name">'+esc(r.name)+'</div><div class="rw-meta">'+meta+'</div></div>'+
+         '<div class="rw-end">'+(r.affordable
+            ? '<button class="rw-redeem" data-act="redeem">Redeem</button>'
+            : '<span class="rw-togo">'+r.to_go+' to go</span>')+'</div></div>';
+    });
+    h+='<button class="rw-pitch" id="rw-pitch">✎ Pitch your own great idea</button>'+
+       '<div class="rw-friend">Bring a friend in — the Fund grows faster</div>';
+    panel.innerHTML=h;
+  }
+
+  function countUp(el){
+    var target=parseInt(el.getAttribute('data-n')||'0',10), cur=el.getAttribute('data-cur')||'credits', t0=null;
+    function step(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/650); el.textContent=Math.round(target*p)+' '+cur; if(p<1) requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+  function animateRewards(){
+    if(rewardsAnimated || !curLoyalty) return; rewardsAnimated=true;
+    var num=document.querySelector('#rwpanel .rw-credits .num');
+    if(num){ num.textContent='0 '+(num.getAttribute('data-cur')||'credits'); countUp(num); }
+    var items=document.querySelectorAll('#rwpanel .rw-credits, #rwpanel .rw-fund, #rwpanel .rw-row, #rwpanel #rw-pitch, #rwpanel .rw-friend');
+    items.forEach(function(el,i){ el.style.opacity='0'; el.style.transform='translateY(10px)'; el.style.transition='opacity .45s ease, transform .45s ease'; el.style.transitionDelay=(i*55)+'ms'; });
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ items.forEach(function(el){ el.style.opacity='1'; el.style.transform='none'; }); }); });
+  }
+  function showPass(pass){
+    if(!pass) return;
+    var panel=document.getElementById('rwpanel');
+    var div=document.createElement('div'); div.className='rw-pass';
+    var exp=new Date(pass.expires_at).getTime();
+    div.innerHTML='<div class="pn">'+esc(pass.reward_name)+' — on us</div><div class="pt">Show this at the till'+(pass.needs_staff?' · staff will confirm':'')+'</div><div class="pc"></div>';
+    panel.insertBefore(div, panel.firstChild);
+    var pc=div.querySelector('.pc');
+    function tick(){ var ms=exp-Date.now(); if(ms<=0){ clearInterval(iv); div.innerHTML='<div class="pt">That pass has expired — redeem again any time.</div>'; setTimeout(function(){div.remove();},4000); return; } var s=Math.floor(ms/1000); pc.textContent=Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+    tick(); var iv=setInterval(tick,1000);
+  }
+  function showNote(txt){
+    var panel=document.getElementById('rwpanel');
+    var d=document.createElement('div'); d.className='rw-pass'; d.style.background='var(--honey)';
+    d.innerHTML='<div class="pn">'+esc(txt)+'</div>';
+    panel.insertBefore(d, panel.firstChild); setTimeout(function(){ d.remove(); },3000);
+  }
+  function openPitch(){
+    var btn=document.getElementById('rw-pitch'); if(!btn) return;
+    var box=document.createElement('div'); box.style.marginTop='18px';
+    box.innerHTML='<textarea id="rw-idea" placeholder="What would you love to see here?" style="width:100%;font:inherit;font-size:15px;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;min-height:80px"></textarea>'+
+      '<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button class="btn" id="rw-send" style="width:auto">Send it</button><button class="btn btn-soft" id="rw-cancel" style="width:auto">Cancel</button></div>';
+    btn.replaceWith(box);
+    document.getElementById('rw-idea').focus();
+    document.getElementById('rw-cancel').addEventListener('click', function(){
+      var b=document.createElement('button'); b.className='rw-pitch'; b.id='rw-pitch'; b.textContent='✎ Pitch your own great idea'; box.replaceWith(b);
+    });
+    document.getElementById('rw-send').addEventListener('click', function(){
+      var v=document.getElementById('rw-idea').value.trim(); if(!v) return;
+      var sb=this; sb.disabled=true; sb.textContent='Sending…';
+      api({token:t, action:'submit_reward_idea', body:v}).then(function(r){
+        if(r.body&&r.body.ok){ box.innerHTML='<div class="rw-friend" style="color:var(--brand);font-weight:600">Thank you — your idea is on its way to the team. ✓</div>'; }
+        else { sb.disabled=false; sb.textContent='Send it'; alert((r.body&&r.body.message)||'Could not send — try again.'); }
+      }).catch(function(){ sb.disabled=false; sb.textContent='Send it'; });
+    });
+  }
+  // One delegated handler on the stable panel — survives re-renders.
+  document.getElementById('rwpanel').addEventListener('click', function(e){
+    if(e.target.closest('#rw-pitch')){ openPitch(); return; }
+    var red=e.target.closest('.rw-redeem'); if(red){ doRedeem(red.closest('.rw-row').getAttribute('data-id')); return; }
+    var star=e.target.closest('.rw-star'); if(star){ doStar(star.closest('.rw-row').getAttribute('data-id')); return; }
+  });
+  function doStar(id){
+    api({token:t, action:'star_reward', reward_id:id}).then(function(r){ if(r.body&&r.body.ok) paintRewards(r.body.loyalty); });
+  }
+  function doRedeem(id){
+    api({token:t, action:'redeem_reward', reward_id:id}).then(function(r){
+      if(r.body&&r.body.ok){ paintRewards(r.body.loyalty); showPass(r.body.pass); }
+      else { showNote((r.body&&r.body.message)||"Couldn't redeem — try again."); }
+    });
+  }
+
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
     if(!res.ok || !res.body.ok || res.body.role!=='client'){ show('err'); return; }
@@ -247,13 +377,13 @@
     if(d.brand_colour) applyBrand(d.brand_colour);
     document.getElementById('su-company').textContent=d.company||"";
     fillSelects(); wireDash();
-    if(d.onboarded){ paintDash(d); show('dash'); openTabFromHash(); return; }
+    if(d.onboarded){ paintDash(d); paintRewards(d.loyalty); show('dash'); openTabFromHash(); return; }
     document.getElementById('su-go').addEventListener('click', function(){
       var btn=this, first=document.getElementById('su-first').value.trim(), last=document.getElementById('su-last').value.trim(), eb=document.getElementById('su-err'); eb.style.display='none';
       if(!first){ eb.textContent="Just need your first name."; eb.style.display='block'; return; }
       btn.disabled=true; btn.textContent="One sec…";
       api({token:t, action:"complete_client_signup", key:first, body:last}).then(function(r){
-        if(r.body.ok){ d.first_name=first; if(last) d.last_name=last; paintDash(d); show('dash'); }
+        if(r.body.ok){ d.first_name=first; if(last) d.last_name=last; paintDash(d); paintRewards(d.loyalty); show('dash'); }
         else { btn.disabled=false; btn.textContent="I'm in"; eb.textContent="Hmm — that didn't take. One more try?"; eb.style.display='block'; }
       }).catch(function(){ btn.disabled=false; btn.textContent="I'm in"; eb.textContent="Couldn't reach the server — try again."; eb.style.display='block'; });
     });
