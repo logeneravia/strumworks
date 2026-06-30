@@ -283,6 +283,18 @@
           <div style="margin-top:10px"><button class="btn" id="cw-save">Save</button><span class="saved" id="cw-saved">Saved ✓</span></div>
         </div>
 
+        <div class="card" id="dash-msgs-card">
+          <h2 style="margin-bottom:6px">DASH replies</h2>
+          <p style="font-size:14px">The two texts someone gets when they reply <strong>DASH</strong> to your number. Put <code>{link}</code> where their private link should appear. Leave a field blank to use the default.</p>
+          <label style="display:block;font-size:13px;font-weight:600;margin:16px 0 6px">When they're still setting up</label>
+          <p style="font-size:13px;color:var(--ink-faint);margin-bottom:8px">Sent to someone who hasn't finished their profile — it takes them in to do that.</p>
+          <textarea id="dsm"></textarea>
+          <label style="display:block;font-size:13px;font-weight:600;margin:16px 0 6px">When they come back</label>
+          <p style="font-size:13px;color:var(--ink-faint);margin-bottom:8px">Sent once they're set up — it takes them to their rewards to see their progress.</p>
+          <textarea id="drm"></textarea>
+          <div style="margin-top:10px"><button class="btn" id="dm-save">Save</button><span class="saved" id="dm-saved">Saved ✓</span></div>
+        </div>
+
         <div class="card">
           <h2 style="margin-bottom:6px">Your clients</h2>
           <p style="font-size:14px" id="clientsub">The people who've joined the conversation.</p>
@@ -508,6 +520,7 @@
     if(isStaff){
       var yc = document.getElementById('yours'); if(yc) yc.remove();
       var cwBtn = document.getElementById('cw-save'); if(cwBtn) cwBtn.style.display='none';
+      var dmCard = document.getElementById('dash-msgs-card'); if(dmCard) dmCard.style.display='none';
       var acCard = document.getElementById('inv-send'); if(acCard) acCard.closest('.card').style.display='none';
     }
 
@@ -604,6 +617,27 @@
         else alert("Save failed: "+(r.body.error||'unknown'));
       });
     });
+
+    // DASH replies (the two texts on reply DASH) — load + save. Blank field
+    // shows the founder default as placeholder and reverts to it on save.
+    var dsm=document.getElementById('dsm'), drm=document.getElementById('drm');
+    if(dsm && drm){
+      dsm.value = d.dash_signup_message || "";
+      drm.value = d.dash_return_message || "";
+      dsm.placeholder = d.dash_signup_default || "{link}";
+      drm.placeholder = d.dash_return_default || "{link}";
+      document.getElementById('dm-save').addEventListener('click', function(){
+        var btn=this, s=dsm.value.trim(), r2=drm.value.trim();
+        if(s && s.indexOf('{link}')<0) return alert("The setting-up reply needs {link} where the link should go.");
+        if(r2 && r2.indexOf('{link}')<0) return alert("The coming-back reply needs {link} where the link should go.");
+        btn.disabled=true; btn.textContent="Saving…";
+        api({token:t, action:"update_dash_messages", signup:s, return_msg:r2}).then(function(r){
+          btn.disabled=false; btn.textContent="Save";
+          if(r.body.ok){ var sv=document.getElementById('dm-saved'); sv.style.display='inline'; setTimeout(function(){sv.style.display='none';},2500); }
+          else alert("Save failed: "+(r.body.message||r.body.error||'unknown'));
+        });
+      });
+    }
 
     // Logo upload.
     document.getElementById('logo-upload').addEventListener('click', function(){

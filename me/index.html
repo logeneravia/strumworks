@@ -231,6 +231,15 @@
     });
   }
 
+  // Deep-link: the returning DASH message points here with #rewards so it
+  // opens straight on the Rewards tab ("see your progress").
+  function openTabFromHash(){
+    var name=(location.hash||"").replace('#','');
+    if(!name) return;
+    var tab=document.querySelector('.tab[data-tab="'+name+'"]');
+    if(tab) tab.click();
+  }
+
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
     if(!res.ok || !res.body.ok || res.body.role!=='client'){ show('err'); return; }
@@ -238,7 +247,7 @@
     if(d.brand_colour) applyBrand(d.brand_colour);
     document.getElementById('su-company').textContent=d.company||"";
     fillSelects(); wireDash();
-    if(d.onboarded){ paintDash(d); show('dash'); return; }
+    if(d.onboarded){ paintDash(d); show('dash'); openTabFromHash(); return; }
     document.getElementById('su-go').addEventListener('click', function(){
       var btn=this, first=document.getElementById('su-first').value.trim(), last=document.getElementById('su-last').value.trim(), eb=document.getElementById('su-err'); eb.style.display='none';
       if(!first){ eb.textContent="Just need your first name."; eb.style.display='block'; return; }
