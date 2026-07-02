@@ -52,12 +52,16 @@
   .rw-credits{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:22px 24px;text-align:center;margin-bottom:14px}
   .rw-credits .num{font-family:"Fraunces",serif;font-weight:500;font-size:34px;color:var(--ink);line-height:1}
   .rw-credits .nudge{font-size:13.5px;color:var(--ink-faint);margin-top:9px}
-  .rw-fund{background:var(--brand-tint);border-radius:18px;padding:18px 20px;margin-bottom:24px}
-  .rw-fund .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .rw-fund .label{font-weight:600;color:var(--brand-deep);font-size:15px}
-  .rw-fund .climb{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--brand);font-weight:600;white-space:nowrap}
-  .rw-fund .amt{font-family:"Fraunces",serif;font-weight:500;font-size:30px;color:var(--brand-deep);margin:8px 0 3px}
-  .rw-fund .sub{font-size:13.5px;color:var(--brand)}
+  .rw-hero{background:var(--brand-tint);border-radius:18px;padding:20px 22px;margin-bottom:24px}
+  .rw-hero.pool{background:var(--honey-tint)}
+  .rw-hero-name{font-family:"Fraunces",serif;font-weight:500;font-size:22px;color:var(--brand-deep);line-height:1.15}
+  .rw-hero.pool .rw-hero-name{color:#6b4a12}
+  .rw-hero-desc{font-size:14px;color:var(--ink-soft);margin-top:9px;line-height:1.5}
+  .rw-hero-meta{font-size:13.5px;color:var(--brand);font-weight:600;margin-top:11px}
+  .rw-hero-pool{font-family:"Fraunces",serif;font-weight:500;font-size:19px;color:#6b4a12;margin-top:12px}
+  .rw-hero-act{margin-top:14px}
+  .rw-hero-empty{text-align:center;background:var(--card);border:1px dashed var(--line)}
+  .rw-hero-empty .rw-hero-name{font-size:18px;color:var(--ink)}
   .rw-q{font-family:"Fraunces",serif;font-weight:500;font-size:21px;margin:0 2px 8px}
   .rw-row{display:flex;align-items:center;gap:13px;padding:15px 4px;border-top:1px solid var(--line)}
   .rw-row.first{border-top:0}
@@ -278,6 +282,34 @@
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function money(cents){ return '$'+Math.round((cents||0)/100).toLocaleString(); }
 
+  function linkify(escaped){
+    return escaped.replace(/(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener" style="color:var(--brand);text-decoration:underline">$1</a>');
+  }
+  // The hero mirrors your one starred pick — your dream, shown large. A pooled
+  // reward (a fund, scholarships) shows its barn-raising here.
+  function heroHTML(L, cur){
+    var pick=(L.rewards||[]).find(function(r){ return r.starred; });
+    if(!pick){
+      return '<div class="rw-hero rw-hero-empty"><div class="rw-hero-name">Pick what you’d most love</div>'+
+             '<div class="rw-hero-desc">Tap the circle beside a reward below — your one pick lives up here, your goal in view.</div></div>';
+    }
+    var h='<div class="rw-hero'+(pick.pool?' pool':'')+'">';
+    h+='<div class="rw-hero-name">'+esc(pick.name)+'</div>';
+    if(pick.description) h+='<div class="rw-hero-desc">'+linkify(esc(pick.description))+'</div>';
+    if(pick.pool){
+      h+='<div class="rw-hero-pool">'+money(pick.pool_total_cents)+' raised · '+pick.pool_builders+' of us building it together</div>';
+      h+='<div class="rw-hero-act">'+(pick.affordable
+          ? '<button class="rw-redeem" data-act="redeem" data-id="'+pick.id+'">Redeem — add to the pot</button>'
+          : '<span class="rw-togo">'+pick.to_go+' '+esc(cur)+' to go before you can chip in</span>')+'</div>';
+    } else {
+      h+='<div class="rw-hero-meta">'+pick.hoping+' hoping for this</div>';
+      h+='<div class="rw-hero-act">'+(pick.affordable
+          ? '<button class="rw-redeem" data-act="redeem" data-id="'+pick.id+'">Redeem</button>'
+          : '<span class="rw-togo">'+pick.to_go+' '+esc(cur)+' to go</span>')+'</div>';
+    }
+    return h+'</div>';
+  }
   function paintRewards(L){
     var panel=document.getElementById('rwpanel');
     if(!L){ return; } // no loyalty for this workspace — keep the gentle placeholder
@@ -285,11 +317,7 @@
     var cur=L.currency||'credits', h='';
     h+='<div class="rw-credits"><div class="num" data-n="'+L.balance+'" data-cur="'+esc(cur)+'">'+L.balance+' '+esc(cur)+'</div>'+
        '<div class="nudge">'+esc(L.scan_nudge||'Scan at the till each visit.')+'</div></div>';
-    if(L.endowment){
-      h+='<div class="rw-fund"><div class="top"><span class="label">'+esc(L.endowment.label)+'</span><span class="climb">climbing</span></div>'+
-         '<div class="amt">'+money(L.endowment.amount_cents)+'</div>'+
-         '<div class="sub">'+(L.endowment.builders||0)+' of us building it — together.</div></div>';
-    }
+    h+=heroHTML(L, cur);
     h+='<div class="rw-q">What would you most love?</div>';
     (L.rewards||[]).forEach(function(r,i){
       var meta=r.hoping+' hoping'+(r.starred?' for this':'')+' · '+r.cost+' '+esc(cur);
@@ -297,11 +325,11 @@
          '<button class="rw-star" data-act="star" aria-label="Choose this">'+(r.starred?'★':'')+'</button>'+
          '<div class="rw-mid"><div class="rw-name">'+esc(r.name)+'</div><div class="rw-meta">'+meta+'</div></div>'+
          '<div class="rw-end">'+(r.affordable
-            ? '<button class="rw-redeem" data-act="redeem">Redeem</button>'
+            ? '<button class="rw-redeem" data-act="redeem" data-id="'+r.id+'">Redeem</button>'
             : '<span class="rw-togo">'+r.to_go+' to go</span>')+'</div></div>';
     });
     h+='<button class="rw-pitch" id="rw-pitch">✎ Pitch your own great idea</button>'+
-       '<div class="rw-friend">Bring a friend in — the Fund grows faster</div>';
+       '<div class="rw-friend">Bring a friend in — the circle grows faster</div>';
     panel.innerHTML=h;
   }
 
@@ -314,7 +342,7 @@
     if(rewardsAnimated || !curLoyalty) return; rewardsAnimated=true;
     var num=document.querySelector('#rwpanel .rw-credits .num');
     if(num){ num.textContent='0 '+(num.getAttribute('data-cur')||'credits'); countUp(num); }
-    var items=document.querySelectorAll('#rwpanel .rw-credits, #rwpanel .rw-fund, #rwpanel .rw-row, #rwpanel #rw-pitch, #rwpanel .rw-friend');
+    var items=document.querySelectorAll('#rwpanel .rw-credits, #rwpanel .rw-hero, #rwpanel .rw-row, #rwpanel #rw-pitch, #rwpanel .rw-friend');
     items.forEach(function(el,i){ el.style.opacity='0'; el.style.transform='translateY(10px)'; el.style.transition='opacity .45s ease, transform .45s ease'; el.style.transitionDelay=(i*55)+'ms'; });
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ items.forEach(function(el){ el.style.opacity='1'; el.style.transform='none'; }); }); });
   }
@@ -357,7 +385,7 @@
   // One delegated handler on the stable panel — survives re-renders.
   document.getElementById('rwpanel').addEventListener('click', function(e){
     if(e.target.closest('#rw-pitch')){ openPitch(); return; }
-    var red=e.target.closest('.rw-redeem'); if(red){ doRedeem(red.closest('.rw-row').getAttribute('data-id')); return; }
+    var red=e.target.closest('.rw-redeem'); if(red){ doRedeem(red.getAttribute('data-id')); return; }
     var star=e.target.closest('.rw-star'); if(star){ doStar(star.closest('.rw-row').getAttribute('data-id')); return; }
   });
   function doStar(id){

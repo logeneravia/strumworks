@@ -96,7 +96,7 @@
   .tile .tv{flex:1;font-weight:600;font-size:14.5px}
   .tile.faded .tv{color:var(--ink-faint);font-weight:400}
   .tile .tm{font-size:12px;color:var(--ink-faint);white-space:nowrap}
-  .sheet input[type=text],.sheet textarea{width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
+  .sheet input[type=text],.sheet input[type=number],.sheet textarea{width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
   /* Elements room: one row per element — name, its values, a +. */
   .elrow{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:12px}
   .elrow.dim{opacity:.5}
@@ -307,6 +307,13 @@
           <p style="font-size:13px;color:var(--ink-faint);margin-bottom:8px">Sent once they're set up — it takes them to their rewards to see their progress.</p>
           <textarea id="drm"></textarea>
           <div style="margin-top:10px"><button class="btn" id="dm-save">Save</button><span class="saved" id="dm-saved">Saved ✓</span></div>
+        </div>
+
+        <div class="card" id="rewards-card">
+          <h2 style="margin-bottom:6px">Rewards &amp; Connection</h2>
+          <p style="font-size:14px">What your people can pick and redeem — a coffee, an experience, or a fund or cause you're raising toward. Your words; add as many as you like.</p>
+          <div id="rw-admin-list" style="margin-top:14px"></div>
+          <button class="btn" id="rw-add" style="margin-top:8px">+ Add a reward</button>
         </div>
 
         <div class="card">
@@ -2001,6 +2008,106 @@
         });
         box.appendChild(row);
       });
+    })();
+
+    // ── Rewards manager: the admin-adds surface. Owner/admin only. ──
+    (function initRewards(){
+      var card = document.getElementById('rewards-card');
+      if(!card) return;
+      if(isStaff){ card.style.display='none'; return; }   // catalog is owner-side
+      var listBox = document.getElementById('rw-admin-list');
+      var rewards = d.rewards_admin || [];
+
+      function renderList(){
+        listBox.innerHTML = '';
+        if(!rewards.length){
+          listBox.innerHTML = '<p style="font-size:13.5px;color:var(--ink-faint)">No rewards yet — add your first below.</p>';
+          return;
+        }
+        rewards.forEach(function(r){
+          var row = document.createElement('div');
+          row.style.cssText = 'padding:10px 0;border-bottom:1px solid rgba(34,28,20,.06)';
+          var badges = (r.pool?'<span style="font-size:11px;color:var(--honey);font-weight:600"> · POOL</span>':'')+
+                       (r.active===false?'<span style="font-size:11px;color:var(--ink-faint)"> · hidden</span>':'');
+          row.innerHTML =
+            '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">'+
+              '<span style="font-weight:600">'+esc(r.name)+badges+'</span>'+
+              '<span style="white-space:nowrap;font-size:13px;color:var(--ink-soft)">'+r.cost_points+' cr'+
+                ' <button data-edit style="border:0;background:none;color:var(--brand);font-weight:600;cursor:pointer">Edit</button></span>'+
+            '</div>'+
+            (r.description?'<div style="font-size:13px;color:var(--ink-soft);margin-top:2px">'+esc(r.description)+'</div>':'');
+          row.querySelector('[data-edit]').addEventListener('click', function(){ openForm(r); });
+          listBox.appendChild(row);
+        });
+      }
+
+      function openForm(r){
+        r = r || {};
+        var sheet = document.createElement('div'); sheet.className = 'sheetWrap';
+        var dollars = function(c){ return c ? Math.round(c/100) : 0; };
+        sheet.innerHTML =
+          '<div class="sheet">'+
+            '<h2 style="font-family:Fraunces,serif;font-size:20px;margin-bottom:12px">'+(r.id?'Edit reward':'New reward')+'</h2>'+
+            '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Title</label>'+
+            '<input type="text" id="rf-name" value="'+esc(r.name||'')+'" style="margin-bottom:12px">'+
+            '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Description <span style="font-weight:400;color:var(--ink-faint)">— shown on their page (a link is fine)</span></label>'+
+            '<textarea id="rf-desc" style="margin-bottom:12px;min-height:72px">'+esc(r.description||'')+'</textarea>'+
+            '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Cost (credits)</label>'+
+            '<input type="number" id="rf-cost" min="0" value="'+(r.cost_points!=null?r.cost_points:0)+'" style="margin-bottom:12px">'+
+            '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:10px"><input type="checkbox" id="rf-active" style="width:auto"'+(r.active!==false?' checked':'')+'> Visible to clients</label>'+
+            '<label style="display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-bottom:10px"><input type="checkbox" id="rf-pool" style="width:auto;margin-top:3px"'+(r.pool?' checked':'')+'> This is a pool / fund — a shared total people build together (a fund, scholarships…)</label>'+
+            '<div id="rf-poolfields" style="'+(r.pool?'':'display:none;')+'background:var(--honey-tint);border-radius:12px;padding:13px 15px;margin-bottom:12px">'+
+              '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Starting amount ($)</label>'+
+              '<input type="number" id="rf-base" min="0" value="'+dollars(r.pool_base_cents)+'" style="margin-bottom:10px">'+
+              '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Starting contributors</label>'+
+              '<input type="number" id="rf-builders" min="0" value="'+(r.pool_base_builders||0)+'" style="margin-bottom:10px">'+
+              '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Each redemption adds ($)</label>'+
+              '<input type="number" id="rf-contrib" min="0" value="'+dollars(r.pool_contribution_cents)+'">'+
+            '</div>'+
+            '<div id="rf-err" style="display:none;color:var(--rust);font-size:13px;margin-bottom:8px"></div>'+
+            '<div style="display:flex;gap:12px;align-items:center">'+
+              '<button class="btn" id="rf-save">Save</button>'+
+              '<button id="rf-cancel" style="border:0;background:none;color:var(--ink-soft);font-weight:600;font-size:14px;cursor:pointer">Cancel</button>'+
+              (r.id?'<button id="rf-del" style="margin-left:auto;border:0;background:none;color:var(--rust);font-weight:600;font-size:13px;cursor:pointer">Delete</button>':'')+
+            '</div>'+
+          '</div>';
+        document.body.appendChild(sheet);
+        var pool = sheet.querySelector('#rf-pool');
+        pool.addEventListener('change', function(){ sheet.querySelector('#rf-poolfields').style.display = pool.checked?'block':'none'; });
+        sheet.querySelector('#rf-cancel').addEventListener('click', function(){ sheet.remove(); });
+        sheet.addEventListener('click', function(e){ if(e.target===sheet) sheet.remove(); });
+        if(r.id){
+          sheet.querySelector('#rf-del').addEventListener('click', function(){
+            if(!confirm('Delete "'+(r.name||'this reward')+'"? This can\'t be undone.')) return;
+            api({token:t, action:'delete_reward', reward_id:r.id}).then(function(rr){
+              if(rr.body&&rr.body.ok) location.reload(); else alert('Delete failed.');
+            });
+          });
+        }
+        sheet.querySelector('#rf-save').addEventListener('click', function(){
+          var name = sheet.querySelector('#rf-name').value.trim();
+          var err = sheet.querySelector('#rf-err');
+          if(!name){ err.textContent='A title is needed.'; err.style.display='block'; return; }
+          var isPool = pool.checked;
+          var pl = { token:t, action:'upsert_reward', name:name,
+            description: sheet.querySelector('#rf-desc').value.trim(),
+            cost_points: parseInt(sheet.querySelector('#rf-cost').value||'0',10)||0,
+            active: sheet.querySelector('#rf-active').checked,
+            pool: isPool,
+            pool_base_cents: isPool ? Math.round((parseFloat(sheet.querySelector('#rf-base').value||'0')||0)*100) : 0,
+            pool_base_builders: isPool ? (parseInt(sheet.querySelector('#rf-builders').value||'0',10)||0) : 0,
+            pool_contribution_cents: isPool ? Math.round((parseFloat(sheet.querySelector('#rf-contrib').value||'0')||0)*100) : 0 };
+          if(r.id) pl.reward_id = r.id;
+          var sb=this; sb.disabled=true; sb.textContent='Saving…';
+          api(pl).then(function(rr){
+            if(rr.body&&rr.body.ok) location.reload();
+            else { sb.disabled=false; sb.textContent='Save'; err.textContent='Save failed: '+((rr.body&&(rr.body.message||rr.body.error))||'unknown'); err.style.display='block'; }
+          }).catch(function(){ sb.disabled=false; sb.textContent='Save'; });
+        });
+      }
+
+      document.getElementById('rw-add').addEventListener('click', function(){ openForm(null); });
+      renderList();
     })();
 
     // Inbox.
