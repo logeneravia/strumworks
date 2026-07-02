@@ -1303,6 +1303,9 @@
       document.getElementById('mode-type').addEventListener('click', function(){ setComposeMode('type'); });
       document.getElementById('mode-assist').addEventListener('click', function(){ setComposeMode('assist'); });
       document.getElementById('cmp-free').addEventListener('input', refresh);
+      // Paste lands as plain text in a textarea and fires 'input'; refresh
+      // again on the next tick to be sure counts/preview catch the pasted text.
+      document.getElementById('cmp-free').addEventListener('paste', function(){ setTimeout(refresh, 0); });
       setComposeMode('type');   // default to the path of least resistance
 
       // ── Schedule control wiring: radios + time live above the button. The
@@ -1874,22 +1877,22 @@
       var box = document.getElementById('recent-rows');
       list.forEach(function(b){
         var when = (b.broadcast_date || (b.created_at||'').slice(0,10)) || '';
-        var firstLine = (b.body||'').replace(/\s+/g,' ').slice(0, 80);
         var counts = (b.sent_count||0) + '/' + (b.recipient_count||0) +
           ((b.failed_count||0) ? ' · <span style="color:var(--rust)">'+b.failed_count+' failed</span>' : '');
         var row = document.createElement('div');
         row.style.cssText = 'padding:11px 0;border-bottom:1px solid rgba(34,28,20,.06);cursor:pointer';
+        // Show the COMPLETE message (wraps, line breaks kept) — no truncation.
+        // Tap a row to reveal its send details (segments · who · when).
         row.innerHTML =
           '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">'+
             '<span style="font-size:12.5px;color:var(--ink-faint);white-space:nowrap">'+esc(when)+'</span>'+
-            '<span style="flex:1;min-width:180px;font-size:14px;color:var(--ink)">'+esc(firstLine)+(b.body && b.body.length > 80 ? '…' : '')+'</span>'+
+            '<span style="flex:1;min-width:180px;font-size:14px;color:var(--ink);white-space:pre-wrap">'+esc(b.body||'')+'</span>'+
             '<span style="font-size:13px;color:var(--ink-soft);white-space:nowrap">'+counts+'</span>'+
           '</div>'+
-          '<div data-full style="display:none;margin-top:8px;background:var(--brand-tint);border-radius:11px;padding:11px 13px;font-size:13.5px;white-space:pre-wrap">'+esc(b.body||'')+
-            '<div style="margin-top:8px;font-size:12px;color:var(--ink-soft)">'+
-              (b.segment_count||1)+' segment'+((b.segment_count||1)===1?'':'s')+
-              (b.sent_by ? ' · sent by '+esc(b.sent_by) : '')+
-              ((b.created_at||'') ? ' · '+esc(b.created_at.replace('T',' ').slice(0,16)) : '')+'</div></div>';
+          '<div data-full style="display:none;margin-top:8px;font-size:12px;color:var(--ink-soft)">'+
+            (b.segment_count||1)+' segment'+((b.segment_count||1)===1?'':'s')+
+            (b.sent_by ? ' · sent by '+esc(b.sent_by) : '')+
+            ((b.created_at||'') ? ' · '+esc(b.created_at.replace('T',' ').slice(0,16)) : '')+'</div>';
         row.addEventListener('click', function(){
           var f = row.querySelector('[data-full]');
           f.style.display = f.style.display === 'none' ? 'block' : 'none';
