@@ -193,8 +193,16 @@
         <div class="card" id="compose-card">
           <h2 style="margin-bottom:12px;font-size:18px" id="compose-to">&nbsp;</h2>
 
+          <!-- Just type (default, path of least resistance) ⟷ Use Assist
+               (the element/pill builder, preserved behind the toggle). -->
+          <div id="cmp-modes" style="display:flex;gap:6px;margin-bottom:12px">
+            <button type="button" id="mode-type" style="flex:1;border:1.5px solid var(--line);border-radius:11px;padding:9px 0;font:inherit;font-size:14px;font-weight:600;cursor:pointer">Just type</button>
+            <button type="button" id="mode-assist" style="flex:1;border:1.5px solid var(--line);border-radius:11px;padding:9px 0;font:inherit;font-size:14px;font-weight:600;cursor:pointer">Use Assist</button>
+          </div>
+
           <div id="el-pills" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:-1px;position:relative;z-index:1;padding:0 10px"></div>
           <div id="compose-box" style="background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:8px 14px;min-height:96px">
+            <textarea id="cmp-free" placeholder="Type your message…" style="display:none;width:100%;border:0;outline:none;resize:vertical;min-height:80px;font:inherit;font-size:15px;color:var(--ink);background:transparent;line-height:1.5;padding:6px 0"></textarea>
             <div id="box-empty" style="font-size:13.5px;color:var(--ink-faint);padding:14px 2px;line-height:1.6">Tap a piece above — it drops in here as a pill. Tap the pill to fill it in; when it's complete, it becomes the actual message text. When every pill is filled, Send wakes up.</div>
             <div id="el-stack"></div>
           </div>
@@ -699,6 +707,20 @@
       var instances = [];   // {key, el|null(free), values:{}, freeText}
       var seq = 0;
       var editingScheduleId = null;   // set when editing a queued scheduled send
+      var composeMode = 'type';       // 'type' (freeform, default) | 'assist' (pills)
+
+      // In freeform, keep the sender's own line breaks (returns are sacred —
+      // Chip, June 17); only light horizontal grooming, same as a free pill.
+      function groomFree(txt){
+        return (txt || '').trim().replace(/[^\S\n]+/g, ' ')
+          .replace(/ ([.,!?;:])/g, '$1').replace(/ +\n/g, '\n');
+      }
+      // The single source of the message body, whichever mode is active.
+      function bodyForSend(){
+        return composeMode === 'type'
+          ? groomFree(document.getElementById('cmp-free').value)
+          : assembled();
+      }
       var noCap = (d.credits_total == null);
       var creditsLeft = noCap ? Infinity : Math.max(0, d.credits_total - (d.credits_used||0));
       document.getElementById('compose-to').innerHTML =
@@ -810,7 +832,7 @@
         return limit - len;
       }
       function refresh(){
-        var body = assembled();
+        var body = bodyForSend();
         var full = (d.company||'') + ': ' + body;
         document.getElementById('compose-preview').textContent = body ? full : '(your message appears here)';
         var s = body ? segCount(full) : 0;
@@ -842,7 +864,9 @@
         // The button wakes only when the message is complete AND a "when" is
         // chosen — and it reads Send or Schedule to match (Chip's spec).
         // Neither mode is pre-picked, so a send is always a deliberate act.
-        var msgReady = instances.length > 0 && instances.every(instComplete);
+        var msgReady = (composeMode === 'type')
+          ? !!(document.getElementById('cmp-free').value.trim())
+          : (instances.length > 0 && instances.every(instComplete));
         var modeEl = document.querySelector('input[name="send-mode"]:checked');
         var mode = modeEl ? modeEl.value : '';
         var whenEl = document.getElementById('schedule-when');
@@ -1240,8 +1264,11 @@
       // Start over — empty the box back to a blank slate. (A fresh
       // page-load re-sets the bench; this clears even that.)
       document.getElementById('cmp-clear').addEventListener('click', function(){
-        if(instances.length && !confirm('Clear the whole message and start over?')) return;
+        var fr = document.getElementById('cmp-free');
+        var hasContent = (composeMode === 'type') ? !!(fr && fr.value.trim()) : instances.length;
+        if(hasContent && !confirm('Clear the whole message and start over?')) return;
         instances = [];
+        if(fr) fr.value = '';
         var sw = document.getElementById('sheetWrap'); if(sw) sw.remove();
         // Also drop any in-progress schedule (and edit) state.
         editingScheduleId = null;
@@ -1250,6 +1277,33 @@
         document.getElementById('cmp-progress').style.display = 'none';
         renderBox(); refresh();
       });
+
+      // ── Mode toggle: "Just type" (default) ⟷ "Use Assist" ─────────
+      // Free typing is the low-friction path people actually take; the
+      // element/pill assist is preserved behind the toggle (garden-plotted,
+      // not deleted) to keep developing toward something lighter than typing.
+      function paintModeBtn(b, on){
+        b.style.background = on ? 'var(--brand)' : '#fff';
+        b.style.color = on ? '#fff' : 'var(--ink-soft)';
+        b.style.borderColor = on ? 'var(--brand)' : 'var(--line)';
+      }
+      function setComposeMode(m){
+        composeMode = m;
+        var typing = (m === 'type');
+        paintModeBtn(document.getElementById('mode-type'), typing);
+        paintModeBtn(document.getElementById('mode-assist'), !typing);
+        document.getElementById('cmp-free').style.display = typing ? 'block' : 'none';
+        document.getElementById('el-pills').style.display = typing ? 'none' : 'flex';
+        document.getElementById('el-stack').style.display = typing ? 'none' : 'block';
+        document.getElementById('box-empty').style.display =
+          (!typing && instances.length === 0) ? 'block' : 'none';
+        refresh();
+        if(typing) { try { document.getElementById('cmp-free').focus(); } catch(e){} }
+      }
+      document.getElementById('mode-type').addEventListener('click', function(){ setComposeMode('type'); });
+      document.getElementById('mode-assist').addEventListener('click', function(){ setComposeMode('assist'); });
+      document.getElementById('cmp-free').addEventListener('input', refresh);
+      setComposeMode('type');   // default to the path of least resistance
 
       // ── Schedule control wiring: radios + time live above the button. The
       //    button morphs (Send/Schedule) and stays grey until a "when" is
@@ -1321,7 +1375,7 @@
         }
       }
       btn.addEventListener('click', async function(){
-        var body = assembled();
+        var body = bodyForSend();
         document.getElementById('cmp-err').style.display='none';
         if(!body){ sendErr('Build or write a message first.'); return; }
         var modeEl2 = document.querySelector('input[name="send-mode"]:checked');
