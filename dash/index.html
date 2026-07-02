@@ -216,7 +216,11 @@
               <span>·&nbsp;for <strong id="cmp-recipients">0</strong> messages</span>
               <span id="cmp-credits-note" style="color:var(--ink-faint)"></span>
             </div>
-            <div id="cmp-ucs2" style="display:none;font-size:12px;color:var(--honey);margin-top:6px"></div>
+            <div id="cmp-ucs2" style="display:none;font-size:12px;color:var(--honey);margin-top:6px">
+              <span id="cmp-ucs2-txt"></span>
+              <button type="button" id="cmp-cleanup" style="display:none;margin-left:8px;border:1px solid var(--honey);background:var(--honey-tint);color:#6b4a12;border-radius:8px;padding:3px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer">Clean it up</button>
+            </div>
+            <div id="cmp-pct" style="display:none;font-size:12.5px;color:var(--rust);font-weight:600;margin-top:6px"></div>
           </div>
 
           <div id="cmp-guard" style="display:none;margin-top:14px;background:var(--honey-tint);border:1px solid var(--honey-soft);border-radius:13px;padding:13px 15px;font-size:13.5px;color:#6b4a12"></div>
@@ -230,6 +234,8 @@
               <input type="radio" name="send-mode" value="schedule" style="accent-color:var(--brand);width:16px;height:16px"> Schedule for later
               <input type="datetime-local" id="schedule-when" style="font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:9px;padding:7px 10px;background:#fff;margin-left:4px">
             </label>
+            <div style="font-size:12px;color:var(--ink-soft);margin-top:8px">Scheduled sends go out between <strong>8 a.m. and 6 p.m.</strong> — no middle-of-the-night texts.</div>
+            <div id="sched-timewarn" style="display:none;font-size:12.5px;color:var(--rust);font-weight:600;margin-top:6px"></div>
           </div>
 
           <div style="margin-top:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end">
@@ -721,6 +727,27 @@
           ? groomFree(document.getElementById('cmp-free').value)
           : assembled();
       }
+      // Scheduled sends land in daytime only — no 2 a.m. texts. Local 8–6.
+      var SCHED_MIN = 8 * 60, SCHED_MAX = 18 * 60;   // 8:00 AM … 6:00 PM
+      function schedTimeOK(dt){
+        if(!dt || isNaN(dt.getTime())) return false;
+        var mins = dt.getHours() * 60 + dt.getMinutes();
+        return mins >= SCHED_MIN && mins <= SCHED_MAX;
+      }
+      // Flag nonsense discounts — any percentage over 100.
+      function pctOver100(text){
+        var re = /(\d+(?:\.\d+)?)\s*%/g, m, bad = [];
+        while((m = re.exec(text || ''))){ if(parseFloat(m[1]) > 100) bad.push(m[0]); }
+        return bad;
+      }
+      // Replace the cost-doubling characters with plain GSM equivalents.
+      function cleanSpecials(s){
+        return (s || '')
+          .replace(/[—–]/g, '-')            // em/en dash → hyphen
+          .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")   // curly → straight quotes
+          .replace(/…/g, '...')             // ellipsis → three dots
+          .replace(/\u00A0/g, " ");         // non-breaking space → normal space
+      }
       var noCap = (d.credits_total == null);
       var creditsLeft = noCap ? Infinity : Math.max(0, d.credits_total - (d.credits_used||0));
       document.getElementById('compose-to').innerHTML =
@@ -857,13 +884,23 @@
         // Unicode encoding, segments (and cost) multiply. Say so, in plain
         // words, so nobody's scared off a send again.
         var ucs = document.getElementById('cmp-ucs2');
-        if(body && s > 1 && isUCS2(full)){
-          ucs.style.display = 'block';
-          ucs.textContent = '⚠ A special character (an em-dash —, a curly quote, or an emoji) is making this longer than it needs to be. Plain hyphens and straight quotes keep it to one segment.';
-        } else { ucs.style.display = 'none'; }
+        var showUcs = body && s > 1 && isUCS2(full);
+        ucs.style.display = showUcs ? 'block' : 'none';
+        if(showUcs){
+          document.getElementById('cmp-ucs2-txt').textContent = '⚠ A special character (an em-dash —, a curly quote, or an emoji) is making this longer than it needs to be. Plain hyphens and straight quotes keep it to one segment.';
+          // One-tap fix in freeform (the pill path grooms its own text).
+          document.getElementById('cmp-cleanup').style.display = (composeMode === 'type') ? 'inline-block' : 'none';
+        }
+        // Nonsense-discount flag: any percentage over 100. Advisory, not a
+        // block — "grew 200%" is legit; the human decides.
+        var pctEl = document.getElementById('cmp-pct');
+        var overs = pctOver100(body);
+        if(overs.length){
+          pctEl.style.display = 'block';
+          pctEl.textContent = '⚠ ' + overs.join(', ') + ' is over 100% — discounts can’t exceed 100%. Double-check before you send.';
+        } else { pctEl.style.display = 'none'; }
         // The button wakes only when the message is complete AND a "when" is
         // chosen — and it reads Send or Schedule to match (Chip's spec).
-        // Neither mode is pre-picked, so a send is always a deliberate act.
         var msgReady = (composeMode === 'type')
           ? !!(document.getElementById('cmp-free').value.trim())
           : (instances.length > 0 && instances.every(instComplete));
@@ -871,9 +908,21 @@
         var mode = modeEl ? modeEl.value : '';
         var whenEl = document.getElementById('schedule-when');
         var futureOK = false;
+        var timeWarn = document.getElementById('sched-timewarn');
+        timeWarn.style.display = 'none';
         if(mode === 'schedule' && whenEl && whenEl.value){
           var w = new Date(whenEl.value);
-          futureOK = !isNaN(w.getTime()) && w.getTime() > Date.now() + 30000;
+          var valid = !isNaN(w.getTime());
+          var isFuture = valid && w.getTime() > Date.now() + 30000;
+          var dayOK = schedTimeOK(w);
+          futureOK = isFuture && dayOK;
+          if(valid && !dayOK){
+            timeWarn.style.display = 'block';
+            timeWarn.textContent = 'Pick a time between 8 a.m. and 6 p.m.';
+          } else if(valid && !isFuture){
+            timeWarn.style.display = 'block';
+            timeWarn.textContent = 'Pick a time in the future.';
+          }
         }
         var sb = document.getElementById('cmp-send');
         sb.textContent = (mode === 'schedule') ? (editingScheduleId ? 'Update schedule' : 'Schedule') : 'Send';
@@ -1306,6 +1355,10 @@
       // Paste lands as plain text in a textarea and fires 'input'; refresh
       // again on the next tick to be sure counts/preview catch the pasted text.
       document.getElementById('cmp-free').addEventListener('paste', function(){ setTimeout(refresh, 0); });
+      document.getElementById('cmp-cleanup').addEventListener('click', function(){
+        var fr = document.getElementById('cmp-free');
+        if(fr){ fr.value = cleanSpecials(fr.value); refresh(); fr.focus(); }
+      });
       setComposeMode('type');   // default to the path of least resistance
 
       // ── Schedule control wiring: radios + time live above the button. The
@@ -1392,6 +1445,9 @@
           var when = wv ? new Date(wv) : null;
           if(!when || isNaN(when.getTime()) || when.getTime() < Date.now() + 30000){
             sendErr('Pick a time in the future, or choose Send now.'); return;
+          }
+          if(!schedTimeOK(when)){
+            sendErr('Scheduled sends must be between 8 a.m. and 6 p.m.'); return;
           }
           scheduledAt = when.toISOString();
         }
