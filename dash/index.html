@@ -291,6 +291,7 @@
           <h2 style="margin-bottom:6px">Your clients</h2>
           <p style="font-size:14px">The whole base at a glance — tap a number to see exactly those people, or search by name, number, or email.</p>
           <div id="cl-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"></div>
+          <div id="cl-tags" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"></div>
           <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
             <input type="text" id="cl-q" placeholder="Search name, number, or email…" autocapitalize="none" style="flex:1;min-width:220px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
             <button class="btn" id="cl-msg" style="display:none;white-space:nowrap"></button>
@@ -2211,8 +2212,9 @@
       ];
       var LABELS = {};
       CHIPS.forEach(function(c){ LABELS[c.key]=c.label; });
-      var state = { filter:'all', q:'', results:[], matched:0, stats:null, busy:false };
+      var state = { filter:'all', tag:'', q:'', results:[], matched:0, stats:null, tagCounts:null, busy:false };
       var chipsBox = document.getElementById('cl-chips');
+      var tagsBox  = document.getElementById('cl-tags');
       var rowsBox  = document.getElementById('cl-rows');
       var noteEl   = document.getElementById('cl-note');
       var msgBtn   = document.getElementById('cl-msg');
@@ -2229,6 +2231,22 @@
           b.textContent = c.label + (n!=null ? ' '+n : '');
           b.addEventListener('click', function(){ state.filter=c.key; load(); });
           chipsBox.appendChild(b);
+        });
+      }
+      // Tags actually on people — a second, quieter row. Tap to slice by a
+      // tag (combines with the chips and the search box); tap again to clear.
+      function renderTags(){
+        tagsBox.innerHTML = '';
+        var tc = state.tagCounts || {};
+        var names = Object.keys(tc).sort(function(a,b){ return tc[b]-tc[a]; }).slice(0, 12);
+        names.forEach(function(nm){
+          var on = state.tag === nm;
+          var b = document.createElement('button');
+          b.style.cssText = 'font:inherit;font-size:12px;font-weight:600;border-radius:99px;padding:5px 12px;cursor:pointer;border:1.5px solid '+
+            (on ? 'var(--honey);background:var(--honey-tint);color:#6b4a12' : 'var(--line);background:transparent;color:var(--ink-faint)');
+          b.textContent = '#' + nm + ' ' + tc[nm];
+          b.addEventListener('click', function(){ state.tag = on ? '' : nm; load(); });
+          tagsBox.appendChild(b);
         });
       }
       function renderRows(){
@@ -2262,26 +2280,34 @@
       }
       function renderNote(){
         var bits = [];
-        if(state.q || state.filter!=='all') bits.push(state.matched + ' match' + (state.matched===1?'':'es'));
+        if(state.q || state.filter!=='all' || state.tag) bits.push(state.matched + ' match' + (state.matched===1?'':'es'));
         if(state.matched > 200) bits.push('showing the first 200');
         if(state.filter==='engaged') bits.push('sorted by replies');
         noteEl.textContent = bits.join(' · ');
-        var sliceable = state.results.length && (state.q || state.filter!=='all');
+        var sliceable = state.results.length && (state.q || state.filter!=='all' || state.tag);
         msgBtn.style.display = sliceable ? 'inline-flex' : 'none';
         if(sliceable){
           var n = state.results.length;
           msgBtn.textContent = 'Message these ' + n + ' →';
         }
       }
+      function segmentLabel(){
+        var parts = [];
+        if(state.filter!=='all') parts.push((LABELS[state.filter]||state.filter).toLowerCase());
+        if(state.tag) parts.push('#'+state.tag);
+        if(state.q) parts.push('“'+state.q+'”');
+        return parts.join(' · ') || 'filtered clients';
+      }
       function load(){
         if(state.busy) return; state.busy = true;
         noteEl.textContent = 'Looking…';
-        api({token:t, action:'client_search', q:state.q, filter:state.filter}).then(function(r){
+        api({token:t, action:'client_search', q:state.q, filter:state.filter, tag:state.tag}).then(function(r){
           state.busy = false;
           if(!(r.body && r.body.ok)){ noteEl.textContent = 'Couldn’t load — try again.'; return; }
           state.stats = r.body.stats; state.results = r.body.results; state.matched = r.body.matched;
+          state.tagCounts = r.body.tag_counts || {};
           document.getElementById('tab-client-count').textContent = '(' + state.stats.active + ')';
-          renderChips(); renderRows(); renderNote();
+          renderChips(); renderTags(); renderRows(); renderNote();
         }).catch(function(){ state.busy=false; noteEl.textContent='Couldn’t load — try again.'; });
       }
       var deb = null;
@@ -2291,8 +2317,7 @@
       });
       msgBtn.addEventListener('click', function(){
         if(!state.results.length || !window.setSegment) return;
-        var label = state.q ? '“'+state.q+'”' : (LABELS[state.filter]||state.filter).toLowerCase();
-        window.setSegment(state.results.map(function(c){ return c.id; }), label);
+        window.setSegment(state.results.map(function(c){ return c.id; }), segmentLabel());
         setTab('send');
         var box = document.getElementById('compose-box');
         if(box) box.scrollIntoView({behavior:'smooth', block:'center'});
