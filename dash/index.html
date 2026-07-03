@@ -238,6 +238,13 @@
             <div id="sched-timewarn" style="display:none;font-size:12.5px;color:var(--rust);font-weight:600;margin-top:6px"></div>
           </div>
 
+          <div id="engage-ctrl" style="margin-top:14px;background:var(--honey-tint);border-radius:13px;padding:13px 15px">
+            <div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:9px">Ask for a reply <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink-faint)">· optional</span></div>
+            <div style="font-size:13.5px;color:var(--ink-soft);margin-bottom:9px">Give them a keyword to text back — a reply earns them one point. <strong>Put the instruction in your message</strong> (e.g. “Reply <em>CAKE</em> for a point”).</div>
+            <input type="text" id="engage-kw" placeholder="keyword (e.g. cake)" autocapitalize="none" autocorrect="off" style="font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;background:#fff;width:200px;max-width:100%">
+            <div id="engage-err" style="display:none;font-size:12.5px;color:var(--rust);font-weight:600;margin-top:6px"></div>
+          </div>
+
           <div style="margin-top:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end">
             <button id="cmp-clear" style="margin-right:auto;border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Start over</button>
             <span style="display:none;font-size:13.5px;color:var(--rust)" id="cmp-err"></span>
@@ -1461,8 +1468,10 @@
         btn.disabled = true; btn.textContent = scheduling ? 'Scheduling…' : 'Sending…';
         // The library learns at send time (the desktop rule): each piece's
         // slot values ride along for the Used-before tiles.
+        var engageKw = (document.getElementById('engage-kw').value||'').trim();
         var pl = {token:t, action: scheduling ? 'compose_schedule' : 'compose_send',
           body:body, override:override, confirmed_big:confirmedBig,
+          engagement_keyword: engageKw,
           instances: instances.filter(function(x){ return x.el; })
             .map(function(x){ return {element_id: x.el.id, slots: x.values}; })};
         if(scheduling){ pl.scheduled_at = scheduledAt; if(editingScheduleId) pl.schedule_id = editingScheduleId; }
@@ -1496,6 +1505,11 @@
           guard.style.display='block';
           guard.innerHTML = '<strong>Already sent</strong> — an identical message went out moments ago. Not re-sent.';
           refresh();
+          return;
+        }
+        if(j.error === 'bad_keyword' || j.error === 'join_keyword' || j.error === 'reserved_keyword'){
+          var ee=document.getElementById('engage-err'); ee.textContent = j.message || 'That keyword can’t be used.'; ee.style.display='block';
+          btn.disabled=false; refresh();
           return;
         }
         if(!j.ok){
