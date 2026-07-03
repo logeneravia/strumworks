@@ -139,6 +139,7 @@
         <button class="tabbtn" data-tab="send">Send</button>
         <button class="tabbtn" data-tab="inbox">Inbox <span id="tab-inbox-unread" style="font-weight:400"></span></button>
         <button class="tabbtn" data-tab="clients">Clients <span id="tab-client-count" style="font-weight:400"></span></button>
+        <button class="tabbtn" data-tab="marketing">Marketing</button>
         <button class="tabbtn" data-tab="elements">Elements</button>
         <button class="tabbtn" data-tab="profile">Profile</button>
       </div>
@@ -192,6 +193,12 @@
              preview band beneath; Send bottom-right. Phone-shaped. -->
         <div class="card" id="compose-card">
           <h2 style="margin-bottom:12px;font-size:18px" id="compose-to">&nbsp;</h2>
+
+          <!-- A filtered group from the Clients tab rides in here. -->
+          <div id="cmp-segment" style="display:none;align-items:center;gap:10px;background:var(--honey-tint);border:1px solid var(--honey);border-radius:11px;padding:9px 13px;margin-bottom:12px;font-size:13.5px;color:#6b4a12">
+            <strong id="cmp-seg-label" style="flex:1"></strong>
+            <button type="button" id="cmp-seg-clear" title="Back to everyone" style="border:0;background:none;color:#6b4a12;font-size:15px;font-weight:700;cursor:pointer">✕</button>
+          </div>
 
           <!-- Just type (default, path of least resistance) ⟷ Use Assist
                (the element/pill builder, preserved behind the toggle). -->
@@ -278,8 +285,46 @@
         </div>
       </div>
 
-      <!-- ─── CLIENTS ──────────────────────────────────────────── -->
+      <!-- ─── CLIENTS — the base itself: who's here, who's engaging ── -->
       <div class="tabpane" id="tab-clients">
+        <div class="card" id="client-home">
+          <h2 style="margin-bottom:6px">Your clients</h2>
+          <p style="font-size:14px">The whole base at a glance — tap a number to see exactly those people, or search by name, number, or email.</p>
+          <div id="cl-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"></div>
+          <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
+            <input type="text" id="cl-q" placeholder="Search name, number, or email…" autocapitalize="none" style="flex:1;min-width:220px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            <button class="btn" id="cl-msg" style="display:none;white-space:nowrap"></button>
+          </div>
+          <div id="cl-note" style="font-size:12.5px;color:var(--ink-faint);margin-top:8px"></div>
+          <div style="overflow-x:auto;margin-top:10px">
+            <table><tbody id="cl-rows"></tbody></table>
+          </div>
+          <div id="cl-invitehint" style="display:none;margin-top:12px"></div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:6px">Add a client</h2>
+          <p style="font-size:14px">Typing someone in sends them a friendly <strong>invitation</strong> from your number — they join the moment they reply DASH, and hear nothing further if they don't. Their yes is their yes.</p>
+          <div class="meters" style="margin-top:14px">
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
+              <input type="text" id="inv-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+            <div>
+              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
+              <input type="tel" id="inv-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+            <button class="btn" id="inv-send">Send invitation</button>
+            <span class="saved" id="inv-saved">Invitation sent ✓</span>
+            <span style="display:none;font-size:13.5px;color:var(--rust)" id="inv-err"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── MARKETING — the door, the greetings, the rewards ──── -->
+      <div class="tabpane" id="tab-marketing">
         <div class="card">
           <h2 style="margin-bottom:16px">Your client door</h2>
           <div class="door">
@@ -321,35 +366,6 @@
           <p style="font-size:14px">What your people can pick and redeem — a coffee, an experience, or a fund or cause you're raising toward. Your words; add as many as you like.</p>
           <div id="rw-admin-list" style="margin-top:14px"></div>
           <button class="btn" id="rw-add" style="margin-top:8px">+ Add a reward</button>
-        </div>
-
-        <div class="card">
-          <h2 style="margin-bottom:6px">Your clients</h2>
-          <p style="font-size:14px" id="clientsub">The people who've joined the conversation.</p>
-          <div style="overflow-x:auto;margin-top:14px">
-            <table><tbody id="clientrows"></tbody></table>
-          </div>
-          <p id="noclients" class="hidden" style="margin-top:12px;font-size:14.5px">No clients yet — your QR is ready when you are.</p>
-        </div>
-
-        <div class="card">
-          <h2 style="margin-bottom:6px">Add a client</h2>
-          <p style="font-size:14px">Typing someone in sends them a friendly <strong>invitation</strong> from your number — they join the moment they reply DASH, and hear nothing further if they don't. Their yes is their yes.</p>
-          <div class="meters" style="margin-top:14px">
-            <div>
-              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">First name <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
-              <input type="text" id="inv-first" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
-            </div>
-            <div>
-              <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Mobile</label>
-              <input type="tel" id="inv-mobile" placeholder="(403) 555-0123" style="width:100%;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">
-            </div>
-          </div>
-          <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-            <button class="btn" id="inv-send">Send invitation</button>
-            <span class="saved" id="inv-saved">Invitation sent ✓</span>
-            <span style="display:none;font-size:13.5px;color:var(--rust)" id="inv-err"></span>
-          </div>
         </div>
       </div>
 
@@ -508,7 +524,7 @@
   document.querySelectorAll('.tabbtn').forEach(function(b){
     b.addEventListener('click', function(){ setTab(b.getAttribute('data-tab')); });
   });
-  setTab(['home','send','inbox','clients','elements','profile'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
+  setTab(['home','send','inbox','clients','marketing','elements','profile'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'home');
 
   if(!t){ show('err'); }
   else api({token:t}).then(function(res){
@@ -877,7 +893,8 @@
         var full = (d.company||'') + ': ' + body;
         document.getElementById('compose-preview').textContent = body ? full : '(your message appears here)';
         var s = body ? segCount(full) : 0;
-        var people = d.active_clients || 0;
+        var people = (window._segment ? window._segment.ids.length : (d.active_clients || 0));
+        document.getElementById('cmp-recipients').textContent = people;
         var totalSegs = s * people;          // segment-credits across the whole send
         var cost = totalSegs * 0.05;         // a nickel buys a hello
         document.getElementById('cmp-chars').textContent = body ? charsRemaining(full) : 160;
@@ -1338,6 +1355,7 @@
         document.querySelectorAll('input[name="send-mode"]').forEach(function(rb){ rb.checked = false; });
         var swh = document.getElementById('schedule-when'); if(swh) swh.value = '';
         document.getElementById('cmp-progress').style.display = 'none';
+        if(window.clearSegment) window.clearSegment();
         renderBox(); refresh();
       });
 
@@ -1373,6 +1391,26 @@
         var fr = document.getElementById('cmp-free');
         if(fr){ fr.value = cleanSpecials(fr.value); refresh(); fr.focus(); }
       });
+
+      // ── Segment audience: a filtered group handed over from the Clients
+      //    tab. The banner names it; ✕ returns to everyone. Exposed on
+      //    window so the Clients module (outside this closure) can call it.
+      window._segment = null;
+      window.setSegment = function(ids, label){
+        window._segment = { ids: ids, label: label };
+        var b = document.getElementById('cmp-segment');
+        b.style.display = 'flex';
+        document.getElementById('cmp-seg-label').textContent =
+          'Sending to: ' + label + ' — ' + ids.length + (ids.length === 1 ? ' person' : ' people');
+        refresh();
+      };
+      window.clearSegment = function(){
+        window._segment = null;
+        document.getElementById('cmp-segment').style.display = 'none';
+        refresh();
+      };
+      document.getElementById('cmp-seg-clear').addEventListener('click', window.clearSegment);
+
       setComposeMode('type');   // default to the path of least resistance
 
       // ── Schedule control wiring: radios + time live above the button. The
@@ -1468,12 +1506,17 @@
         btn.disabled = true; btn.textContent = scheduling ? 'Scheduling…' : 'Sending…';
         // The library learns at send time (the desktop rule): each piece's
         // slot values ride along for the Used-before tiles.
+        if(window._segment && scheduling){
+          sendErr('Filtered groups can only be sent now — scheduling them comes later.');
+          btn.disabled = false; btn.textContent = 'Schedule'; return;
+        }
         var engageKw = (document.getElementById('engage-kw').value||'').trim();
         var pl = {token:t, action: scheduling ? 'compose_schedule' : 'compose_send',
           body:body, override:override, confirmed_big:confirmedBig,
           engagement_keyword: engageKw,
           instances: instances.filter(function(x){ return x.el; })
             .map(function(x){ return {element_id: x.el.id, slots: x.values}; })};
+        if(window._segment) pl.contact_ids = window._segment.ids;
         if(scheduling){ pl.scheduled_at = scheduledAt; if(editingScheduleId) pl.schedule_id = editingScheduleId; }
         var r = await api(pl).catch(function(){ return {ok:false, body:{}}; });
         var j = r.body || {};
@@ -2149,34 +2192,132 @@
       });
     }
 
-    // Roster.
-    var rows = document.getElementById('clientrows');
-    if(!d.clients.length){ document.getElementById('noclients').classList.remove('hidden'); }
-    d.clients.forEach(function(c){
-      var name = ((c.first_name||'') + ' ' + (c.last_name||'')).trim() || '—';
-      var chip = c.status === 'invited'
-        ? ' <span style="background:var(--honey-tint);color:#6b4a12;font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px">invited</span>'
-        : '';
-      var src = c.source==='keyword_optin' ? 'joined by text'
-              : c.source==='tenant_invite' ? 'your invite' : (c.source||'');
-      var wd = (c.status === 'invited' && c.id)
-        ? '<button class="btn" style="padding:5px 12px;font-size:12px;background:var(--rust)" data-withdraw="'+esc(c.id)+'">Withdraw</button>'
-        : '';
-      var tr = document.createElement('tr');
-      tr.innerHTML = '<td><strong>'+esc(name)+'</strong>'+chip+'</td><td class="soft">'+esc(c.phone)+'</td>'+
-        '<td class="soft">'+esc((c.created_at||'').slice(0,10))+'</td>'+
-        '<td class="soft">'+esc(src)+'</td><td>'+wd+'</td>';
-      rows.appendChild(tr);
-    });
-    rows.addEventListener('click', function(ev){
-      var btn = ev.target.closest('button[data-withdraw]'); if(!btn) return;
-      if(!confirm("Withdraw this invitation? They disappear from your list. (The text on their phone can't be unsent.)")) return;
-      btn.disabled = true; btn.textContent = "…";
-      api({token:t, action:"withdraw_client_invite", key:btn.getAttribute('data-withdraw')}).then(function(r){
-        if(r.body.ok){ location.reload(); }
-        else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(r.body.error||'unknown')); }
-      }).catch(function(){ btn.disabled=false; btn.textContent="Withdraw"; });
-    });
+    // ── Clients home: the base at a glance, then reach into any slice. ──
+    // Chips are counts AND filters; search is substring over name / phone
+    // digits / email; "Message these N" hands the slice to compose (where
+    // CHIP presses Send). Data via client_search — the 25-row snapshot list
+    // is history.
+    (function initClientsHome(){
+      if(isStaff) return;                       // owner/admin surface
+      var CHIPS = [
+        {key:'all',            label:'All'},
+        {key:'invited',        label:'Invited'},
+        {key:'active',         label:'Active'},
+        {key:'onboarded',      label:'Using rewards'},
+        {key:'engaged',        label:'Engaged'},
+        {key:'no_consent',     label:'No consent'},
+        {key:'birthday_today', label:'Birthday today'},
+        {key:'incomplete',     label:'No first name'},
+      ];
+      var LABELS = {};
+      CHIPS.forEach(function(c){ LABELS[c.key]=c.label; });
+      var state = { filter:'all', q:'', results:[], matched:0, stats:null, busy:false };
+      var chipsBox = document.getElementById('cl-chips');
+      var rowsBox  = document.getElementById('cl-rows');
+      var noteEl   = document.getElementById('cl-note');
+      var msgBtn   = document.getElementById('cl-msg');
+      var hintEl   = document.getElementById('cl-invitehint');
+
+      function renderChips(){
+        chipsBox.innerHTML = '';
+        CHIPS.forEach(function(c){
+          var n = state.stats ? (c.key==='all' ? state.stats.total : state.stats[c.key]) : null;
+          if(c.key!=='all' && n===0) return;     // quiet until it has people
+          var b = document.createElement('button');
+          b.className = 'tabbtn' + (state.filter===c.key ? ' on' : '');
+          b.style.cssText = 'padding:6px 14px;font-size:12.5px';
+          b.textContent = c.label + (n!=null ? ' '+n : '');
+          b.addEventListener('click', function(){ state.filter=c.key; load(); });
+          chipsBox.appendChild(b);
+        });
+      }
+      function renderRows(){
+        rowsBox.innerHTML = ''; hintEl.style.display='none'; hintEl.innerHTML='';
+        state.results.forEach(function(c){
+          var name = ((c.first_name||'') + ' ' + (c.last_name||'')).trim() || '—';
+          var chips = '';
+          if(c.status==='invited') chips += ' <span style="background:var(--honey-tint);color:#6b4a12;font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px">invited</span>';
+          if(c.onboarded_at)       chips += ' <span style="background:var(--brand-tint);color:var(--brand-deep);font-size:11px;font-weight:600;border-radius:99px;padding:2px 9px">rewards ✓</span>';
+          if(c.engagement)         chips += ' <span style="color:var(--honey);font-size:12px;font-weight:700" title="replies that earned a point">⚡'+c.engagement+'</span>';
+          var act = '';
+          if(c.status==='active')       act = '<button class="btn" style="padding:5px 12px;font-size:12px" data-rwlink="'+esc(c.id)+'">Send rewards link</button>';
+          else if(c.status==='invited') act = '<button class="btn" style="padding:5px 12px;font-size:12px;background:var(--rust)" data-withdraw="'+esc(c.id)+'">Withdraw</button>';
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td><strong>'+esc(name)+'</strong>'+chips+'</td><td class="soft">'+esc(c.phone||'')+'</td>'+
+            '<td class="soft">'+esc((c.created_at||'').slice(0,10))+'</td><td>'+act+'</td>';
+          rowsBox.appendChild(tr);
+        });
+        // Searched a full number and nobody has it → offer the join invite.
+        var qd = state.q.replace(/\D+/g,'');
+        if(!state.results.length && qd.length >= 10){
+          hintEl.style.display='block';
+          hintEl.innerHTML = '<span style="font-size:13.5px;color:var(--ink-soft)">No one has '+esc(state.q)+' — </span>'+
+            '<button class="btn" id="cl-newinv" style="padding:7px 14px;font-size:13px">Invite them as a new client</button>';
+          document.getElementById('cl-newinv').addEventListener('click', function(){
+            document.getElementById('inv-mobile').value = state.q;
+            document.getElementById('inv-first').focus();
+            document.getElementById('inv-first').scrollIntoView({behavior:'smooth', block:'center'});
+          });
+        }
+      }
+      function renderNote(){
+        var bits = [];
+        if(state.q || state.filter!=='all') bits.push(state.matched + ' match' + (state.matched===1?'':'es'));
+        if(state.matched > 200) bits.push('showing the first 200');
+        if(state.filter==='engaged') bits.push('sorted by replies');
+        noteEl.textContent = bits.join(' · ');
+        var sliceable = state.results.length && (state.q || state.filter!=='all');
+        msgBtn.style.display = sliceable ? 'inline-flex' : 'none';
+        if(sliceable){
+          var n = state.results.length;
+          msgBtn.textContent = 'Message these ' + n + ' →';
+        }
+      }
+      function load(){
+        if(state.busy) return; state.busy = true;
+        noteEl.textContent = 'Looking…';
+        api({token:t, action:'client_search', q:state.q, filter:state.filter}).then(function(r){
+          state.busy = false;
+          if(!(r.body && r.body.ok)){ noteEl.textContent = 'Couldn’t load — try again.'; return; }
+          state.stats = r.body.stats; state.results = r.body.results; state.matched = r.body.matched;
+          document.getElementById('tab-client-count').textContent = '(' + state.stats.active + ')';
+          renderChips(); renderRows(); renderNote();
+        }).catch(function(){ state.busy=false; noteEl.textContent='Couldn’t load — try again.'; });
+      }
+      var deb = null;
+      document.getElementById('cl-q').addEventListener('input', function(){
+        state.q = this.value.trim();
+        clearTimeout(deb); deb = setTimeout(load, 350);
+      });
+      msgBtn.addEventListener('click', function(){
+        if(!state.results.length || !window.setSegment) return;
+        var label = state.q ? '“'+state.q+'”' : (LABELS[state.filter]||state.filter).toLowerCase();
+        window.setSegment(state.results.map(function(c){ return c.id; }), label);
+        setTab('send');
+        var box = document.getElementById('compose-box');
+        if(box) box.scrollIntoView({behavior:'smooth', block:'center'});
+      });
+      rowsBox.addEventListener('click', function(ev){
+        var rw = ev.target.closest('button[data-rwlink]');
+        if(rw){
+          if(!confirm('Text them their personal rewards link now?')) return;
+          rw.disabled = true; rw.textContent = 'Sending…';
+          api({token:t, action:'invite_to_dashboard', contact_id:rw.getAttribute('data-rwlink')}).then(function(r){
+            if(r.body && r.body.ok){ rw.textContent = 'Sent ✓'; }
+            else { rw.disabled=false; rw.textContent='Send rewards link'; alert('Couldn’t send: '+((r.body&&(r.body.message||r.body.error))||'unknown')); }
+          }).catch(function(){ rw.disabled=false; rw.textContent='Send rewards link'; });
+          return;
+        }
+        var btn = ev.target.closest('button[data-withdraw]'); if(!btn) return;
+        if(!confirm("Withdraw this invitation? They disappear from your list. (The text on their phone can't be unsent.)")) return;
+        btn.disabled = true; btn.textContent = "…";
+        api({token:t, action:"withdraw_client_invite", key:btn.getAttribute('data-withdraw')}).then(function(r){
+          if(r.body.ok){ load(); }
+          else { btn.disabled=false; btn.textContent="Withdraw"; alert("Couldn't withdraw: "+(r.body.error||'unknown')); }
+        }).catch(function(){ btn.disabled=false; btn.textContent="Withdraw"; });
+      });
+      load();
+    })();
 
     // QR download + share.
     setTimeout(function(){
