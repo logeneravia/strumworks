@@ -359,6 +359,9 @@
           <label style="display:block;font-size:13px;font-weight:600;margin:16px 0 6px">When they come back</label>
           <p style="font-size:13px;color:var(--ink-faint);margin-bottom:8px">Sent once they're set up — it takes them to their rewards to see their progress.</p>
           <textarea id="drm"></textarea>
+          <label style="display:block;font-size:13px;font-weight:600;margin:16px 0 6px">The rewards invite</label>
+          <p style="font-size:13px;color:var(--ink-faint);margin-bottom:8px">Sent when you tap <strong>Send rewards link</strong> beside someone on the Clients tab. <code>{first}</code> becomes their name, <code>{link}</code> their private link.</p>
+          <textarea id="rwi"></textarea>
           <div style="margin-top:10px"><button class="btn" id="dm-save">Save</button><span class="saved" id="dm-saved">Saved ✓</span></div>
         </div>
 
@@ -663,22 +666,32 @@
       });
     });
 
-    // DASH replies (the two texts on reply DASH) — load + save. Blank field
-    // shows the founder default as placeholder and reverts to it on save.
-    var dsm=document.getElementById('dsm'), drm=document.getElementById('drm');
+    // DASH replies + the rewards invite — load + save. Blank field shows
+    // the founder default as placeholder and reverts to it on save.
+    var dsm=document.getElementById('dsm'), drm=document.getElementById('drm'), rwi=document.getElementById('rwi');
     if(dsm && drm){
       dsm.value = d.dash_signup_message || "";
       drm.value = d.dash_return_message || "";
       dsm.placeholder = d.dash_signup_default || "{link}";
       drm.placeholder = d.dash_return_default || "{link}";
+      if(rwi){
+        rwi.value = d.rewards_invite_message || "";
+        rwi.placeholder = d.rewards_invite_default || "{first} … {link}";
+      }
       document.getElementById('dm-save').addEventListener('click', function(){
-        var btn=this, s=dsm.value.trim(), r2=drm.value.trim();
+        var btn=this, s=dsm.value.trim(), r2=drm.value.trim(), rv=rwi?rwi.value.trim():'';
         if(s && s.indexOf('{link}')<0) return alert("The setting-up reply needs {link} where the link should go.");
         if(r2 && r2.indexOf('{link}')<0) return alert("The coming-back reply needs {link} where the link should go.");
+        if(rv && rv.indexOf('{link}')<0) return alert("The rewards invite needs {link} where the link should go.");
         btn.disabled=true; btn.textContent="Saving…";
-        api({token:t, action:"update_dash_messages", signup:s, return_msg:r2}).then(function(r){
+        api({token:t, action:"update_dash_messages", signup:s, return_msg:r2, rewards_invite:rv}).then(function(r){
           btn.disabled=false; btn.textContent="Save";
-          if(r.body.ok){ var sv=document.getElementById('dm-saved'); sv.style.display='inline'; setTimeout(function(){sv.style.display='none';},2500); }
+          if(r.body.ok){
+            // The Clients-tab preview reads these — keep them current
+            // without a reload.
+            d.rewards_invite_message = rv;
+            var sv=document.getElementById('dm-saved'); sv.style.display='inline'; setTimeout(function(){sv.style.display='none';},2500);
+          }
           else alert("Save failed: "+(r.body.message||r.body.error||'unknown'));
         });
       });
@@ -2325,7 +2338,16 @@
       rowsBox.addEventListener('click', function(ev){
         var rw = ev.target.closest('button[data-rwlink]');
         if(rw){
-          if(!confirm('Text them their personal rewards link now?')) return;
+          // Show the ACTUAL text before it goes — never confirm blind.
+          var cid = rw.getAttribute('data-rwlink');
+          var person = state.results.find(function(c){ return c.id === cid; }) || {};
+          var pname = ((person.first_name||'') + ' ' + (person.last_name||'')).trim() || 'them';
+          var tpl = d.rewards_invite_message || d.rewards_invite_default || '';
+          var preview = (d.sender_prefix||'') + tpl
+            .split('{first}').join((person.first_name||'').trim() || 'there')
+            .split('{link}').join('[their private link]');
+          if(!confirm('This will text ' + pname + ':\n\n“' + preview + '”\n\n' +
+              'Want it worded differently? Cancel, then edit it under Marketing → DASH replies.\n\nSend it?')) return;
           rw.disabled = true; rw.textContent = 'Sending…';
           api({token:t, action:'invite_to_dashboard', contact_id:rw.getAttribute('data-rwlink')}).then(function(r){
             if(r.body && r.body.ok){ rw.textContent = 'Sent ✓'; }
