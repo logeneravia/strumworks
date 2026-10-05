@@ -2247,13 +2247,42 @@
     var ib = document.getElementById('inboxrows');
     var unread = (d.inbox||[]).filter(function(m){ return !m.read_at; }).length;
     if(!d.inbox || !d.inbox.length){ document.getElementById('noinbox').classList.remove('hidden'); }
+    // Each reply can be answered right here, from the shop's number. The
+    // answer is recorded on the message, so everyone sees who's been looked
+    // after (2026-10-05: pasta pre-orders, and no way to answer them).
+    function inboxWhen(iso){ try { return new Date(iso).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}); } catch(e){ return (iso||'').replace('T',' ').slice(0,16); } }
     (d.inbox||[]).forEach(function(m){
       var div = document.createElement('div');
-      div.style.cssText = 'padding:11px 0;border-bottom:1px solid rgba(34,28,20,.06)';
+      div.style.cssText = 'padding:12px 0;border-bottom:1px solid rgba(34,28,20,.06)';
+      var who = m.name ? esc(m.name)+' <span style="font-weight:400;color:var(--ink-faint);font-size:13px">'+esc(m.from_phone)+'</span>' : esc(m.from_phone);
       div.innerHTML = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">'+
-        '<span style="font-weight:'+(m.read_at?'400':'600')+'">'+(m.read_at?'':'<span style="color:var(--honey)">●</span> ')+esc(m.from_phone)+'</span>'+
-        '<span style="font-size:12.5px;color:var(--ink-faint)">'+esc((m.received_at||'').replace('T',' ').slice(0,16))+'</span></div>'+
-        '<div style="font-size:14.5px;color:var(--ink-soft);margin-top:3px">'+esc(m.body)+'</div>';
+        '<span style="font-weight:'+(m.read_at?'400':'600')+'">'+(m.read_at?'':'<span style="color:var(--honey)">●</span> ')+who+'</span>'+
+        '<span style="font-size:12.5px;color:var(--ink-faint)">'+esc(inboxWhen(m.received_at))+'</span></div>'+
+        '<div style="font-size:15px;color:var(--ink);margin-top:4px;white-space:pre-wrap">'+esc(m.body)+'</div>'+
+        '<div data-replied style="'+(m.replied_at?'':'display:none;')+'margin-top:8px;background:var(--brand-tint);border-radius:11px;padding:9px 12px;font-size:14px;white-space:pre-wrap">'+
+          (m.replied_at ? '<span style="font-size:12px;color:var(--ink-faint)">'+esc(m.replied_by||'You')+' replied · '+esc(inboxWhen(m.replied_at))+'</span><br>'+esc(m.reply_body||'') : '')+'</div>'+
+        '<div style="margin-top:8px"><button type="button" data-open class="btn" style="padding:8px 16px;font-size:13.5px">'+(m.replied_at?'Reply again':'Reply')+'</button></div>'+
+        '<div data-box style="display:none;margin-top:8px">'+
+          '<textarea data-text rows="3" style="width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;font:inherit;font-size:15px;resize:vertical" placeholder="Your answer goes out from the shop\'s number."></textarea>'+
+          '<div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:6px;flex-wrap:wrap">'+
+            '<span data-err style="display:none;font-size:13px;color:var(--rust)"></span>'+
+            '<button type="button" data-cancel style="border:0;background:none;color:var(--ink-soft);font-size:13.5px;font-weight:600;cursor:pointer">Cancel</button>'+
+            '<button type="button" data-send class="btn" style="padding:9px 20px;font-size:14px">Send reply</button></div></div>';
+      var box = div.querySelector('[data-box]'), ta = div.querySelector('[data-text]'), err = div.querySelector('[data-err]');
+      div.querySelector('[data-open]').addEventListener('click', function(){ box.style.display = 'block'; this.style.display = 'none'; ta.focus(); });
+      div.querySelector('[data-cancel]').addEventListener('click', function(){ box.style.display = 'none'; div.querySelector('[data-open]').style.display = ''; err.style.display = 'none'; });
+      div.querySelector('[data-send]').addEventListener('click', async function(){
+        var txt = (ta.value||'').trim(); if(!txt){ err.textContent = 'Write your answer first.'; err.style.display = 'inline'; return; }
+        var sb = this; sb.disabled = true; sb.textContent = 'Sending…'; err.style.display = 'none';
+        var r = await api({token:t, action:'reply_inbound', key:m.id, body:txt}).catch(function(){ return {body:{}}; });
+        var j = r.body || {};
+        sb.disabled = false; sb.textContent = 'Send reply';
+        if(!j.ok){ err.textContent = j.message || 'The reply didn\'t send. Try again.'; err.style.display = 'inline'; return; }
+        var rp = div.querySelector('[data-replied]');
+        rp.innerHTML = '<span style="font-size:12px;color:var(--ink-faint)">'+esc(j.replied_by||'You')+' replied · just now</span><br>'+esc(txt);
+        rp.style.display = 'block'; box.style.display = 'none'; ta.value = '';
+        var ob = div.querySelector('[data-open]'); ob.textContent = 'Reply again'; ob.style.display = '';
+      });
       ib.appendChild(div);
     });
     if(unread > 0){
