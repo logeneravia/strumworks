@@ -264,8 +264,8 @@
     tx.innerHTML =
       '<div class="stat"><span>GST payable <span class="sub">'+esc(qbo.gst_quarter||'')+'</span></span><span class="v money neg">'+money(qbo.gst_payable)+'</span></div>'+
       (qbo.source_deductions!=null?'<div class="stat"><span>Source deductions</span><span class="v money">'+money(qbo.source_deductions)+'</span></div>':'')+
-      (snap.gst_owing_manual?'<div class="stat"><span>GST owing (manual)</span><span class="v money neg">'+money(snap.gst_owing_manual)+'</span></div>':'')+
-      (qbo.ls_clearing!=null?'<div class="stat"><span>Lightspeed clearing</span><span class="v money">'+money(qbo.ls_clearing)+'</span></div>':'');
+      (snap.gst_owing_manual?'<div class="stat"><span>GST owing (manual)</span><span class="v money neg">'+money(snap.gst_owing_manual)+'</span></div>':'');
+      // Lightspeed clearing retired 2026-10-08 (Lightspeed is gone; matches the desktop Snapshot)
 
     // ── Cash flow
     var income=x.income||[], payments=x.payments||[];
