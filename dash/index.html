@@ -73,7 +73,21 @@
   .unsorted-note{margin:36px 0 18px;text-align:center;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
   /* The living compose box (Chip's whiteboard + the desktop grammar):
      incomplete pieces ride as pills; completed pieces become prose. */
-  #el-stack{font-size:14.5px;line-height:2.05;color:var(--ink)}
+  /* The reusables shelf — pills in a column beside the box (Chip, Nov 5):
+     visible, reached-for, never suggested mid-typing. */
+  .shelf{width:188px;flex:0 0 188px;background:var(--brand-tint);border-radius:14px;padding:12px;display:flex;flex-direction:column}
+  .shelf .slabel{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--honey);margin-bottom:5px}
+  .shelf .shint{font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-bottom:9px}
+  #el-pills{display:flex;flex-direction:column;gap:7px}
+  #el-pills .tabbtn{width:100%;text-align:left;border-radius:11px;font-size:13px;padding:9px 13px;background:#fff}
+  #el-pills .tabbtn.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  #compose-box.dropready{border-color:var(--brand);background:var(--brand-tint)}
+  @media(max-width:700px){
+    #cmp-row{flex-direction:column-reverse}
+    .shelf{width:100%;flex:auto}
+    #el-pills{flex-direction:row;flex-wrap:wrap}
+    #el-pills .tabbtn{width:auto}
+  }
   .pillEl{display:inline-flex;align-items:center;gap:2px;background:var(--brand-tint);border:1.5px solid var(--brand);border-radius:99px;padding:4px 4px 4px 13px;font-size:13px;font-weight:600;color:var(--brand);cursor:pointer;margin:2px 5px 2px 0;vertical-align:middle;line-height:1.3}
   .pillEl .px{border:0;background:none;color:var(--rust);font-size:15px;cursor:pointer;padding:0 8px;line-height:1}
   .proseEl{cursor:pointer;border-bottom:1.5px dashed rgba(34,28,20,.22);margin-right:5px}
@@ -200,18 +214,18 @@
             <button type="button" id="cmp-seg-clear" title="Back to everyone" style="border:0;background:none;color:#6b4a12;font-size:15px;font-weight:700;cursor:pointer">✕</button>
           </div>
 
-          <!-- Just type (default, path of least resistance) ⟷ Use Assist
-               (the element/pill builder, preserved behind the toggle). -->
-          <div id="cmp-modes" style="display:flex;gap:6px;margin-bottom:12px">
-            <button type="button" id="mode-type" style="flex:1;border:1.5px solid var(--line);border-radius:11px;padding:9px 0;font:inherit;font-size:14px;font-weight:600;cursor:pointer">Just type</button>
-            <button type="button" id="mode-assist" style="flex:1;border:1.5px solid var(--line);border-radius:11px;padding:9px 0;font:inherit;font-size:14px;font-weight:600;cursor:pointer">Use Assist</button>
-          </div>
-
-          <div id="el-pills" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:-1px;position:relative;z-index:1;padding:0 10px"></div>
-          <div id="compose-box" style="background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:8px 14px;min-height:96px">
-            <textarea id="cmp-free" placeholder="Type your message…" style="display:none;width:100%;border:0;outline:none;resize:vertical;min-height:80px;font:inherit;font-size:15px;color:var(--ink);background:transparent;line-height:1.5;padding:6px 0"></textarea>
-            <div id="box-empty" style="font-size:13.5px;color:var(--ink-faint);padding:14px 2px;line-height:1.6">Tap a piece above — it drops in here as a pill. Tap the pill to fill it in; when it's complete, it becomes the actual message text. When every pill is filled, Send wakes up.</div>
-            <div id="el-stack"></div>
+          <!-- One plain box, always. The reusable pieces live on a visible
+               shelf beside it (right column on wide screens, a wrap row
+               above on phones) — a standing invitation, never a mode.
+               NEVER EVER interrupt the user (Chip's law, Nov 5). -->
+          <div id="cmp-row" style="display:flex;gap:14px;align-items:stretch">
+            <div id="compose-box" style="flex:1;min-width:0;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:8px 14px;min-height:96px">
+              <textarea id="cmp-free" placeholder="Type your message…" style="display:block;width:100%;border:0;outline:none;resize:vertical;min-height:80px;font:inherit;font-size:15px;color:var(--ink);background:transparent;line-height:1.5;padding:6px 0"></textarea>
+            </div>
+            <div id="el-shelf" class="shelf">
+              <div class="slabel">Things you reuse</div>\n              <div class="shint">Tap one, fill in the blank, and it lands in your message \u2014 ready to edit.</div>
+              <div id="el-pills"></div>
+            </div>
           </div>
 
           <div style="margin-top:14px">
@@ -811,19 +825,14 @@
         } catch(e){ st.textContent = 'That file couldn\'t be read as a picture. Try a JPEG or PNG.'; }
       });
       document.getElementById('media-remove').addEventListener('click', function(){ setMedia(null); });
-      var composeMode = 'type';       // 'type' (freeform, default) | 'assist' (pills)
-
-      // In freeform, keep the sender's own line breaks (returns are sacred —
-      // Chip, June 17); only light horizontal grooming, same as a free pill.
+      // One box, one source of truth. Keep the sender's own line breaks
+      // (returns are sacred — Chip, June 17); only light horizontal grooming.
       function groomFree(txt){
         return (txt || '').trim().replace(/[^\S\n]+/g, ' ')
           .replace(/ ([.,!?;:])/g, '$1').replace(/ +\n/g, '\n');
       }
-      // The single source of the message body, whichever mode is active.
       function bodyForSend(){
-        return composeMode === 'type'
-          ? groomFree(document.getElementById('cmp-free').value)
-          : assembled();
+        return groomFree(document.getElementById('cmp-free').value);
       }
       // Scheduled sends land in daytime only — no 2 a.m. texts. Local 8–6.
       var SCHED_MIN = 8 * 60, SCHED_MAX = 18 * 60;   // 8:00 AM … 6:00 PM
@@ -909,27 +918,8 @@
         });
         return out.trim();
       }
-      function assembled(){
-        var parts = [];
-        instances.forEach(function(inst){
-          // Pills aren't prose yet — an unfilled piece must not leak
-          // its empty template into the message (an empty Scones
-          // rendered as a lone "." priced at 236 credits — Chip's
-          // screenshot, demo morning).
-          if(!instComplete(inst)) return;
-          if(inst.el){ var r = renderTemplate(inst.el.template_text, inst.values, inst.el.rules); if(r) parts.push(r); }
-          else if((inst.freeText||'').trim()){
-            // Freeflow keeps the seeker's own line breaks — returns are
-            // SACRED in free text (Chip, June 17). Only light HORIZONTAL
-            // grooming: collapse runs of spaces, no floating period
-            // ("Cinnamon buns ." shipped one on day one), trim trailing
-            // spaces. Pills still get fully groomed into prose by
-            // renderTemplate — that path is unchanged.
-            parts.push(inst.freeText.trim().replace(/[^\S\n]+/g,' ').replace(/ ([.,!?;:])/g,'$1').replace(/ +\n/g,'\n'));
-          }
-        });
-        return parts.join(' ').replace(/[^\S\n]+([.,!?;:])/g,'$1');
-      }
+      // (The old assist-mode assembler is gone — the textarea is the
+      // single source; pieces insert their prose directly into it.)
       // Approximate GSM segment math (server recomputes authoritatively).
       var GSM = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
       var GSM_EXT = "|^€{}[]~\\\f";
@@ -987,8 +977,7 @@
         ucs.style.display = showUcs ? 'block' : 'none';
         if(showUcs){
           document.getElementById('cmp-ucs2-txt').textContent = '⚠ A special character (an em-dash —, a curly quote, or an emoji) is making this longer than it needs to be. Plain hyphens and straight quotes keep it to one segment.';
-          // One-tap fix in freeform (the pill path grooms its own text).
-          document.getElementById('cmp-cleanup').style.display = (composeMode === 'type') ? 'inline-block' : 'none';
+          document.getElementById('cmp-cleanup').style.display = 'inline-block';
         }
         // Nonsense-discount flag: any percentage over 100. Advisory, not a
         // block — "grew 200%" is legit; the human decides.
@@ -1000,9 +989,7 @@
         } else { pctEl.style.display = 'none'; }
         // The button wakes only when the message is complete AND a "when" is
         // chosen — and it reads Send or Schedule to match (Chip's spec).
-        var msgReady = (composeMode === 'type')
-          ? !!(document.getElementById('cmp-free').value.trim())
-          : (instances.length > 0 && instances.every(instComplete));
+        var msgReady = !!(document.getElementById('cmp-free').value.trim());
         var modeEl = document.querySelector('input[name="send-mode"]:checked');
         var mode = modeEl ? modeEl.value : '';
         var whenEl = document.getElementById('schedule-when');
@@ -1057,150 +1044,51 @@
         for(var j=0;j<slots.length;j++){ if(slots[j].enabled !== false) return slots[j].name; }
         return null;
       }
+      // Shelf chips light up once their piece has been dropped into the
+      // message this session (and count repeats).
       function syncBox(){
-        document.getElementById('box-empty').style.display = instances.length ? 'none' : 'block';
         document.querySelectorAll('#el-pills [data-chip]').forEach(function(b){
           var id = b.getAttribute('data-chip');
-          var n = instances.filter(function(x){ return (x.el ? x.el.id : 'free') === id; }).length;
+          var n = instances.filter(function(x){ return x.el && x.el.id === id; }).length;
           b.classList.toggle('on', n > 0);
           var nm = b.getAttribute('data-name');
           if(nm) b.textContent = nm + (n > 1 ? ' ×'+n : '');
         });
       }
-      // ── Drag-to-reorder: lift a piece, the caret shows the landing.
-      // Mouse drags immediately past a 6px threshold; touch needs a
-      // ~⅓s hold first so scrolling and tapping stay natural.
-      var drag = { active:false, suppressTap:false, toIndex:null, ghost:null, caret:null };
-      function placeCaret(x, y, excludeEl){
-        var stack = document.getElementById('el-stack');
-        var kids = Array.prototype.filter.call(stack.children, function(k){
-          return k.dataset && k.dataset.piece && k !== excludeEl;
-        });
-        var best = { d: Infinity, idx: kids.length };
-        kids.forEach(function(k, i){
-          var r = k.getBoundingClientRect();
-          [{px:r.left, idx:i}, {px:r.right, idx:i+1}].forEach(function(c){
-            var py = r.top + r.height/2;
-            var dd = (c.px-x)*(c.px-x) + (py-y)*(py-y)*3; // same-line gaps win
-            if(dd < best.d) best = { d: dd, idx: c.idx };
-          });
-        });
-        drag.toIndex = best.idx;
-        if(drag.caret.parentNode) drag.caret.remove();
-        if(best.idx < kids.length) stack.insertBefore(drag.caret, kids[best.idx]);
-        else stack.appendChild(drag.caret);
-      }
-      function beginDrag(elm, inst, x, y){
-        drag.active = true; drag.suppressTap = true; drag.toIndex = null;
-        elm.classList.add('dragging');
-        var g = elm.cloneNode(true);
-        g.classList.add('dragGhost');
-        g.style.left = x+'px'; g.style.top = y+'px';
-        document.body.appendChild(g);
-        drag.ghost = g;
-        drag.caret = document.createElement('span');
-        drag.caret.className = 'dropCaret';
-        if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(e){} }
-        function mv(ev){
-          g.style.left = ev.clientX+'px'; g.style.top = ev.clientY+'px';
-          placeCaret(ev.clientX, ev.clientY, elm);
-        }
-        function tm(ev){ if(drag.active) ev.preventDefault(); } // hold the page still on touch
-        function up(){
-          document.removeEventListener('pointermove', mv);
-          document.removeEventListener('pointerup', up);
-          document.removeEventListener('pointercancel', up);
-          document.removeEventListener('touchmove', tm);
-          drag.active = false;
-          if(drag.ghost) drag.ghost.remove();
-          if(drag.caret && drag.caret.parentNode) drag.caret.remove();
-          elm.classList.remove('dragging');
-          if(drag.toIndex != null){
-            var others = instances.filter(function(x){ return x.key !== inst.key; });
-            var to = Math.max(0, Math.min(drag.toIndex, others.length));
-            others.splice(to, 0, inst);
-            instances = others;
-          }
-          setTimeout(function(){ drag.suppressTap = false; }, 80);
-          renderBox(); refresh();
-        }
-        document.addEventListener('pointermove', mv);
-        document.addEventListener('pointerup', up);
-        document.addEventListener('pointercancel', up);
-        document.addEventListener('touchmove', tm, {passive:false});
-      }
-      function makeDraggable(elm, inst){
-        var sx = 0, sy = 0, holdTimer = null, started = false;
-        elm.addEventListener('pointerdown', function(ev){
-          if(ev.target.classList && ev.target.classList.contains('px')) return;
-          sx = ev.clientX; sy = ev.clientY; started = false;
-          if(ev.pointerType === 'touch'){
-            holdTimer = setTimeout(function(){
-              holdTimer = null; started = true;
-              beginDrag(elm, inst, sx, sy);
-            }, 320);
-          }
-        });
-        elm.addEventListener('pointermove', function(ev){
-          var dx = Math.abs(ev.clientX-sx), dy = Math.abs(ev.clientY-sy);
-          if(!started && ev.pointerType !== 'touch' && ev.buttons && (dx > 6 || dy > 6)){
-            started = true;
-            beginDrag(elm, inst, ev.clientX, ev.clientY);
-          }
-          if(holdTimer && (dx > 9 || dy > 9)){ clearTimeout(holdTimer); holdTimer = null; } // it's a scroll
-        });
-        ['pointerup','pointercancel','pointerleave'].forEach(function(k){
-          elm.addEventListener(k, function(){ if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; } });
-        });
+      // ── Insert a finished piece's prose into the one box, at the
+      // cursor, with sane spacing. The text is the sender's after that.
+      function insertProse(text){
+        var fr = document.getElementById('cmp-free');
+        var st = fr.selectionStart != null ? fr.selectionStart : fr.value.length;
+        var en = fr.selectionEnd != null ? fr.selectionEnd : st;
+        var before = fr.value.slice(0, st), after = fr.value.slice(en);
+        var pre = before && !/\s$/.test(before) ? ' ' : '';
+        var post = after && !/^\s/.test(after) ? ' ' : '';
+        fr.value = before + pre + text + post + after;
+        var pos = (before + pre + text).length;
+        fr.focus(); try { fr.setSelectionRange(pos, pos); } catch(e){}
       }
 
-      function renderBox(){
-        var stack = document.getElementById('el-stack');
-        stack.innerHTML = '';
-        instances.forEach(function(inst){
-          if(instComplete(inst)){
-            var prose = inst.el
-              ? renderTemplate(inst.el.template_text, inst.values, inst.el.rules)
-              : (inst.freeText||'').trim();
-            var sp = document.createElement('span');
-            sp.className = 'proseEl';
-            sp.dataset.piece = inst.key;
-            sp.innerHTML = esc(prose) + ' <span style="font-size:11px;opacity:.45">✎</span>';
-            sp.title = 'Tap to edit · drag to reorder';
-            sp.addEventListener('click', function(){
-              if(drag.suppressTap) return;
-              openEditor(inst, firstSlotNeeding(inst));
-            });
-            makeDraggable(sp, inst);
-            stack.appendChild(sp);
-            stack.appendChild(document.createTextNode(' '));
-          } else {
-            var pill = document.createElement('span');
-            pill.className = 'pillEl';
-            pill.dataset.piece = inst.key;
-            pill.innerHTML = esc(inst.el ? inst.el.display_name : 'Freeflow') +
-              '<button class="px" title="Remove">×</button>';
-            pill.title = 'Tap to fill · drag to reorder';
-            pill.addEventListener('click', function(ev){
-              if(ev.target.classList.contains('px') || drag.suppressTap) return;
-              openEditor(inst, firstSlotNeeding(inst));
-            });
-            pill.querySelector('.px').addEventListener('click', function(ev){
-              ev.stopPropagation();
-              if(drag.suppressTap) return;
-              instances = instances.filter(function(x){ return x.key !== inst.key; });
-              renderBox(); refresh();
-            });
-            makeDraggable(pill, inst);
-            stack.appendChild(pill);
-          }
-        });
-        syncBox();
+      function renderBox(){ syncBox(); }
+      // Start a piece from its shelf pill: fresh values, defaults in,
+      // then the fill-in sheet walks its blanks. A piece with no blanks
+      // (Malcolm's "Hello") drops straight in.
+      function startPiece(el){
+        var inst = { key:'i'+(++seq), el:el, values:{}, freeText:'' };
+        (el.slots_json||[]).forEach(function(sl){ if(sl.default) inst.values[sl.name] = sl.default; });
+        var slots = (el.slots_json||[]).filter(function(s2){ return s2.enabled !== false; });
+        if(!slots.length){ finishPiece(inst); return; }
+        var first = firstSlotNeeding(inst) || slots[0].name;
+        openEditor(inst, first);
       }
-      function addInstance(el){
-        var inst = { key:'i'+(++seq), el:el||null, values:{}, freeText:'' };
-        if(el){ (el.slots_json||[]).forEach(function(sl){ if(sl.default) inst.values[sl.name] = sl.default; }); }
-        instances.push(inst);
+      // The sheet's walk is done — if the piece actually says something,
+      // its prose drops into the box and the library will learn at send.
+      function finishPiece(inst){
+        var w = document.getElementById('sheetWrap'); if(w) w.remove();
+        if(inst.el && instComplete(inst)){
+          var prose = renderTemplate(inst.el.template_text, inst.values, inst.el.rules);
+          if(prose){ insertProse(prose); instances.push(inst); }
+        }
         renderBox(); refresh();
       }
 
@@ -1266,9 +1154,8 @@
         }
         html += '<div style="display:flex;gap:14px;align-items:center;margin-top:14px;flex-wrap:wrap">'+
           '<button class="btn" id="sheet-use">Use this</button>'+
-          '<button id="sheet-cancel" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Cancel</button>'+
-          (cur ? '<button id="sheet-clear" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Clear</button>' : '')+
-          '<button id="sheet-remove" style="margin-left:auto;border:0;background:none;color:var(--rust);font-size:13px;font-weight:600;cursor:pointer">Remove piece</button></div>';
+          ((slot && !slot.required) ? '<button id="sheet-skip" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Skip</button>' : '')+
+          '<button id="sheet-cancel" style="margin-left:auto;border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Cancel</button></div>';
         sheet.innerHTML = html;
         wrap.appendChild(sheet);
         document.body.appendChild(wrap);
@@ -1332,33 +1219,31 @@
           });
         });
 
+        // Walk every enabled blank once (required and optional alike),
+        // then the piece lands — or quietly doesn't, if nothing was said.
+        function advance(){
+          inst._seen = inst._seen || {};
+          inst._seen[slotName] = true;
+          var nxt = (inst.el.slots_json||[]).find(function(s){
+            return s.enabled !== false && !(inst._seen[s.name]) && !(inst.values[s.name]||'').trim();
+          });
+          if(nxt){ openEditor(inst, nxt.name); return; }
+          finishPiece(inst);
+        }
         function setVal(v){
-          if(isFree){ inst.freeText = (v||'').trim(); }
-          else { inst.values[slotName] = isLong ? (v||'').trim() : normShort(v); }
-          // Auto-advance: the next unfilled required slot of this
-          // piece — else done, and the pill is prose when the sheet
-          // lifts.
-          if(!isFree){
-            var nxt = (inst.el.slots_json||[]).find(function(s){
-              return s.enabled !== false && s.required && s.name !== slotName && !(inst.values[s.name]||'').trim();
-            });
-            if(nxt){ renderBox(); refresh(); openEditor(inst, nxt.name); return; }
-          }
-          closeEditor();
+          if(isFree){ inst.freeText = (v||'').trim(); closeEditor(); return; }
+          inst.values[slotName] = isLong ? (v||'').trim() : normShort(v);
+          advance();
         }
         sheet.querySelector('#sheet-use').addEventListener('click', function(){
           setVal(sheet.querySelector('#sheet-input').value);
         });
         sheet.querySelector('#sheet-cancel').addEventListener('click', function(){ closeEditor(); });
+        var skipBtn = sheet.querySelector('#sheet-skip');
+        if(skipBtn) skipBtn.addEventListener('click', function(){ advance(); });
         var inp0 = sheet.querySelector('#sheet-input');
         inp0.addEventListener('keydown', function(ev){
           if(ev.key === 'Enter' && !isLong){ ev.preventDefault(); setVal(inp0.value); }
-        });
-        var clearBtn = sheet.querySelector('#sheet-clear');
-        if(clearBtn) clearBtn.addEventListener('click', function(){ setVal(''); });
-        sheet.querySelector('#sheet-remove').addEventListener('click', function(){
-          instances = instances.filter(function(x){ return x.key !== inst.key; });
-          closeEditor();
         });
         if(!lib.length || isLong){ inp0.focus(); }
       }
@@ -1373,25 +1258,16 @@
         // No inline background — it would trump the .on state and
         // leave white text on cream (the ghost chip in Chip's photo).
         b.style.cssText = 'font-size:12.5px;padding:7px 14px';
-        b.addEventListener('click', function(){
-          // One per message unless the element allows more — tapping
-          // a lit chip re-opens its piece instead of duplicating it.
-          var existing = instances.find(function(x){ return x.el && x.el.id === el.id; });
-          if(existing && !(el.config && el.config.allow_multiple)){
-            openEditor(existing, firstSlotNeeding(existing));
-            return;
-          }
-          addInstance(el);
+        b.addEventListener('click', function(){ startPiece(el); });
+        // Drag works too — pick the pill up and let it go over the box.
+        b.draggable = true;
+        b.addEventListener('dragstart', function(ev){
+          try { ev.dataTransfer.setData('text/plain', el.display_name); } catch(e){}
+          window._dragPiece = el;
         });
+        b.addEventListener('dragend', function(){ window._dragPiece = null; });
         pills.appendChild(b);
       });
-      var fb = document.createElement('button');
-      fb.className = 'tabbtn'; fb.textContent = 'Freeflow';
-      fb.setAttribute('data-chip', 'free');
-      fb.setAttribute('data-name', 'Freeflow');
-      fb.style.cssText = 'font-size:12.5px;padding:7px 14px';
-      fb.addEventListener('click', function(){ addInstance(null); });
-      pills.appendChild(fb);
       // Admins get the door to the workshop right where the tools live.
       if(!isStaff && d.power === 'full'){
         var ed = document.createElement('button');
@@ -1402,18 +1278,26 @@
         pills.appendChild(ed);
       }
 
-      // The standing pieces arrive on the bench as pills (or, when a
-      // default pre-fills them — like Hours — already as prose).
-      // Suggested, never imposed; the × is right there.
-      (d.elements||[]).forEach(function(el){
-        if(el.config && el.config.default_selected) addInstance(el);
-      });
+      // The box welcomes a dropped pill — same walk as a tap.
+      (function(){
+        var box = document.getElementById('compose-box');
+        box.addEventListener('dragover', function(ev){ if(window._dragPiece){ ev.preventDefault(); box.classList.add('dropready'); } });
+        box.addEventListener('dragleave', function(){ box.classList.remove('dropready'); });
+        box.addEventListener('drop', function(ev){
+          box.classList.remove('dropready');
+          if(window._dragPiece){ ev.preventDefault(); var el2 = window._dragPiece; window._dragPiece = null; startPiece(el2); }
+        });
+        // Nothing on the shelf and no door to stock it — hide the shelf.
+        if(!(d.elements||[]).length && (isStaff || d.power !== 'full')){
+          var sh = document.getElementById('el-shelf'); if(sh) sh.style.display = 'none';
+        }
+      })();
 
       // Start over — empty the box back to a blank slate. (A fresh
       // page-load re-sets the bench; this clears even that.)
       document.getElementById('cmp-clear').addEventListener('click', function(){
         var fr = document.getElementById('cmp-free');
-        var hasContent = (composeMode === 'type') ? !!(fr && fr.value.trim()) : instances.length;
+        var hasContent = !!(fr && fr.value.trim());
         if(hasContent && !confirm('Clear the whole message and start over?')) return;
         instances = [];
         if(fr) fr.value = '';
@@ -1428,30 +1312,7 @@
         renderBox(); refresh();
       });
 
-      // ── Mode toggle: "Just type" (default) ⟷ "Use Assist" ─────────
-      // Free typing is the low-friction path people actually take; the
-      // element/pill assist is preserved behind the toggle (garden-plotted,
-      // not deleted) to keep developing toward something lighter than typing.
-      function paintModeBtn(b, on){
-        b.style.background = on ? 'var(--brand)' : '#fff';
-        b.style.color = on ? '#fff' : 'var(--ink-soft)';
-        b.style.borderColor = on ? 'var(--brand)' : 'var(--line)';
-      }
-      function setComposeMode(m){
-        composeMode = m;
-        var typing = (m === 'type');
-        paintModeBtn(document.getElementById('mode-type'), typing);
-        paintModeBtn(document.getElementById('mode-assist'), !typing);
-        document.getElementById('cmp-free').style.display = typing ? 'block' : 'none';
-        document.getElementById('el-pills').style.display = typing ? 'none' : 'flex';
-        document.getElementById('el-stack').style.display = typing ? 'none' : 'block';
-        document.getElementById('box-empty').style.display =
-          (!typing && instances.length === 0) ? 'block' : 'none';
-        refresh();
-        if(typing) { try { document.getElementById('cmp-free').focus(); } catch(e){} }
-      }
-      document.getElementById('mode-type').addEventListener('click', function(){ setComposeMode('type'); });
-      document.getElementById('mode-assist').addEventListener('click', function(){ setComposeMode('assist'); });
+      // One surface, no modes — the toggle is gone (Chip, Nov 5).
       document.getElementById('cmp-free').addEventListener('input', refresh);
       // Paste lands as plain text in a textarea and fires 'input'; refresh
       // again on the next tick to be sure counts/preview catch the pasted text.
@@ -1480,8 +1341,6 @@
       };
       document.getElementById('cmp-seg-clear').addEventListener('click', window.clearSegment);
 
-      setComposeMode('type');   // default to the path of least resistance
-
       // ── Schedule control wiring: radios + time live above the button. The
       //    button morphs (Send/Schedule) and stays grey until a "when" is
       //    chosen AND the message is complete (Chip's spec). All checking
@@ -1504,7 +1363,8 @@
         return dt.getFullYear()+'-'+pad2(dt.getMonth()+1)+'-'+pad2(dt.getDate())+'T'+pad2(dt.getHours())+':'+pad2(dt.getMinutes());
       }
       window.loadScheduledIntoComposer = function(bodyText, scheduledAtISO, schedId, schedMedia){
-        instances = [{ key:'i'+(++seq), el:null, values:{}, freeText: String(bodyText||'') }];
+        var fr0 = document.getElementById('cmp-free'); if(fr0) fr0.value = String(bodyText||'');
+        instances = [];
         editingScheduleId = schedId || null;
         if(window._setComposeMedia) window._setComposeMedia(schedMedia || null);
         var sr = document.querySelector('input[name="send-mode"][value="schedule"]');
