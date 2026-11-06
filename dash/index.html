@@ -82,6 +82,11 @@
   #el-pills .tabbtn{width:100%;text-align:left;border-radius:11px;font-size:13px;padding:9px 13px;background:#fff}
   #el-pills .tabbtn.on{background:var(--brand);border-color:var(--brand);color:#fff}
   #compose-box.dropready{border-color:var(--brand);background:var(--brand-tint)}
+  .ghostrow{display:flex;align-items:center;gap:4px}
+  .ghostrow .gname{flex:1;text-align:left;font:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);background:#fff;border:1.5px dashed var(--honey);border-radius:11px;padding:9px 13px;cursor:pointer}
+  .ghostrow .gname:hover{border-color:var(--brand);color:var(--brand)}
+  .ghostrow .gact{border:0;background:none;cursor:pointer;font-size:14px;color:var(--ink-faint);padding:4px}
+  .ghostrow .gact:hover{color:var(--brand)}
   @media(max-width:700px){
     #cmp-row{flex-direction:column-reverse}
     .shelf{width:100%;flex:auto}
@@ -226,6 +231,11 @@
               <div class="slabel">Reusable Elements</div>
               <div class="shint">Tap one, fill in the blank, and it lands in your message — ready to edit.</div>
               <div id="el-pills"></div>
+              <div id="el-ghosts" style="display:none;margin-top:12px">
+                <div class="slabel">From your recent sends</div>
+                <div id="ghost-pills" style="display:flex;flex-direction:column;gap:7px"></div>
+              </div>
+              <button type="button" id="el-add" class="tabbtn" style="margin-top:12px;font-size:12.5px;width:100%;text-align:left;border-style:dashed">+ Add a reusable</button>
             </div>
           </div>
 
@@ -1288,11 +1298,86 @@
           box.classList.remove('dropready');
           if(window._dragPiece){ ev.preventDefault(); var el2 = window._dragPiece; window._dragPiece = null; startPiece(el2); }
         });
-        // Nothing on the shelf and no door to stock it — hide the shelf.
-        if(!(d.elements||[]).length && (isStaff || d.power !== 'full')){
-          var sh = document.getElementById('el-shelf'); if(sh) sh.style.display = 'none';
-        }
       })();
+
+      // ── "From your recent sends" — yesterday, mined into ghost pills.
+      // Tap the name: its text drops into the box. ★ keeps it (becomes a
+      // real pill for everyone). ✕ dismisses. Never offered mid-typing —
+      // the ghosts sit on the shelf and wait (NEVER interrupt the user).
+      (function initGhosts(){
+        var sugs = d.suggestions || [];
+        if(!sugs.length) return;
+        document.getElementById('el-ghosts').style.display = 'block';
+        var boxg = document.getElementById('ghost-pills');
+        sugs.forEach(function(sg){
+          var row = document.createElement('div');
+          row.className = 'ghostrow';
+          var nameB = document.createElement('button');
+          nameB.type = 'button'; nameB.className = 'gname';
+          nameB.textContent = sg.name;
+          nameB.title = (sg.body||'').slice(0,160) + ' — tap to drop it into your message';
+          nameB.addEventListener('click', function(){ insertProse(sg.body || ''); refresh(); });
+          var keepB = document.createElement('button');
+          keepB.type = 'button'; keepB.className = 'gact'; keepB.textContent = '★';
+          keepB.title = 'Keep — make this a real pill for everyone';
+          keepB.addEventListener('click', async function(){
+            keepB.disabled = true;
+            var r = await api({token:t, action:'keep_suggestion', key: sg.id}).catch(function(){ return {body:{}}; });
+            if(r.body && r.body.ok){ location.reload(); } else { keepB.disabled = false; }
+          });
+          var dropB = document.createElement('button');
+          dropB.type = 'button'; dropB.className = 'gact'; dropB.textContent = '✕';
+          dropB.title = 'Not useful — dismiss';
+          dropB.addEventListener('click', async function(){
+            await api({token:t, action:'dismiss_suggestion', key: sg.id}).catch(function(){});
+            row.remove();
+            if(!boxg.children.length) document.getElementById('el-ghosts').style.display = 'none';
+          });
+          row.appendChild(nameB); row.appendChild(keepB); row.appendChild(dropB);
+          boxg.appendChild(row);
+        });
+      })();
+
+      // ── "+ Add a reusable" — two questions, no grammar, no workbench.
+      document.getElementById('el-add').addEventListener('click', function(){
+        var old = document.getElementById('sheetWrap'); if(old) old.remove();
+        var wrap = document.createElement('div');
+        wrap.className = 'sheetWrap'; wrap.id = 'sheetWrap';
+        wrap.addEventListener('click', function(ev){ if(ev.target === wrap) wrap.remove(); });
+        var sheet = document.createElement('div');
+        sheet.className = 'sheet';
+        sheet.innerHTML =
+          '<div style="font-family:\'Fraunces\',serif;font-size:18px;color:var(--brand);margin-bottom:10px">A new reusable</div>'+
+          '<div style="font-size:12.5px;font-weight:600;margin-bottom:4px">The text — exactly as it should land in a message</div>'+
+          '<textarea id="ra-text" style="min-height:90px" placeholder="Open every Sunday 10\u20134."></textarea>'+
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">'+
+            '<div style="flex:1.4;min-width:170px"><div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Call it</div><input type="text" id="ra-name" placeholder="Sunday hours"></div>'+
+            '<div style="flex:1;min-width:150px"><div style="font-size:12.5px;font-weight:600;margin-bottom:4px">True until <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></div><input type="date" id="ra-date" style="width:100%;font:inherit;font-size:14px;border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;background:#fff"></div>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--ink-faint);margin-top:6px">Give it a date and it tidies itself off the shelf when the day has passed.</div>'+
+          '<div style="display:flex;gap:14px;align-items:center;margin-top:14px">'+
+            '<button class="btn" id="ra-save">Add it</button>'+
+            '<button id="ra-cancel" style="border:0;background:none;color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer">Cancel</button>'+
+            '<span id="ra-err" style="display:none;font-size:13px;color:var(--rust)"></span>'+
+          '</div>';
+        wrap.appendChild(sheet); document.body.appendChild(wrap);
+        sheet.querySelector('#ra-cancel').addEventListener('click', function(){ wrap.remove(); });
+        sheet.querySelector('#ra-save').addEventListener('click', async function(){
+          var text = sheet.querySelector('#ra-text').value.trim();
+          var name = sheet.querySelector('#ra-name').value.trim() || text.split(/\s+/).slice(0,3).join(' ');
+          var when = sheet.querySelector('#ra-date').value || null;
+          var err = sheet.querySelector('#ra-err');
+          if(!text){ err.textContent = 'The text is the whole point — type it first.'; err.style.display='inline'; return; }
+          this.disabled = true; this.textContent = 'Adding\u2026';
+          var r = await api({token:t, action:'upsert_element', element:{
+            display_name: name.slice(0,60), template_text: text, slots_json: [], rules: [],
+            category: when ? 'Coming up' : 'Always', enabled: true, sort_order: 500, expires_on: when
+          }}).catch(function(){ return {body:{}}; });
+          if(r.body && r.body.ok !== false && !r.body.error){ location.reload(); }
+          else { err.textContent = (r.body && r.body.error) || 'Couldn\u2019t add it \u2014 try again.'; err.style.display='inline'; this.disabled=false; this.textContent='Add it'; }
+        });
+        sheet.querySelector('#ra-text').focus();
+      });
 
       // Start over — empty the box back to a blank slate. (A fresh
       // page-load re-sets the bench; this clears even that.)
