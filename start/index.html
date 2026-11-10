@@ -55,7 +55,7 @@
   .fine{font-size:12.5px;color:var(--ink-faint);margin-top:14px;text-align:center}
 
   .msg{border-radius:13px;padding:14px 16px;font-size:14.5px;margin-bottom:18px;display:none}
-  .msg.err{display:block;background:#F8E7DF;color:var(--rust);border:1px solid rgba(168,71,42,.25)}
+  .msg.err{background:#F8E7DF;color:var(--rust);border:1px solid rgba(168,71,42,.25)}
 
   .success{display:none;text-align:center;padding:10px 0 4px}
   .success .big-num{font-family:"Fraunces",serif;font-size:clamp(26px,4vw,34px);color:var(--pine);margin:18px 0 4px}
@@ -65,8 +65,29 @@
 
   .honeypot{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
 
+  #su-turnstile:not(:empty){margin:0 0 18px}
+  #codeview{display:none}
+  .su-code{display:flex;gap:9px;margin:4px 0 22px;max-width:360px}
+  .su-digit{flex:1;min-width:0;text-align:center;font:inherit;font-size:24px;font-family:"Fraunces",serif;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 0;transition:.15s}
+  .su-digit:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(28,74,59,.12)}
+  .su-digit[disabled]{opacity:.6}
+  .linkbtn{background:none;border:0;font:inherit;font-size:14px;font-weight:600;color:var(--pine);cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:0}
+  .linkbtn:hover{color:var(--pine-deep)}
+  .resend{font-size:14px;color:var(--ink-soft);margin-top:18px;text-align:center}
+
   footer{background:transparent;padding:20px 0 26px;text-align:center;font-size:13px;color:var(--ink-faint)}
 </style>
+<script>
+  // Cloudflare Turnstile — the invisible human check. Same site key as the
+  // main page's contact form (same hostname).
+  window.TURNSTILE_SITE_KEY = "0x4AAAAAADmwOzVJ4yJ_eZPq";
+  window.__ts = { widget: null };
+  window.onloadTurnstileCallback = function(){
+    function r(){ try { window.__ts.widget = turnstile.render("#su-turnstile", { sitekey: window.TURNSTILE_SITE_KEY, theme: "light" }); } catch(e){} }
+    if (document.getElementById("su-turnstile")) r(); else document.addEventListener("DOMContentLoaded", r);
+  };
+</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback" async defer></script>
 </head>
 <body>
 
@@ -85,7 +106,7 @@
     <div id="formview">
       <span class="eyebrow">Start free</span>
       <h1>Set up your shop.</h1>
-      <p class="lede">Your name, your shop, your mobile — that's all we need. We'll reserve a <strong>local number that's yours</strong>, and text you a welcome to get things rolling. Five client spots and fifty messages to play with, on us.</p>
+      <p class="lede">Your name, your shop, your mobile — that's all we need. We'll text you a quick code to confirm it's really your phone, reserve a <strong>local number that's yours</strong>, and text you a welcome to get things rolling. Five client spots and fifty messages to play with, on us.</p>
 
       <div class="msg err" id="errbox"></div>
 
@@ -112,7 +133,7 @@
         <div class="field">
           <label for="mobile">Your mobile</label>
           <input type="tel" id="mobile" name="mobile" autocomplete="tel" placeholder="(403) 555-0123" required>
-          <div class="hint">We'll text your welcome here — and match your new business number to your area code.</div>
+          <div class="hint">We'll text your code and your welcome here — and match your new business number to your area code.</div>
         </div>
 
         <div class="honeypot" aria-hidden="true">
@@ -125,9 +146,33 @@
           <span>Yes — Strumworks may text me about my account and setup. Messages are few and useful; reply STOP any time. We keep your details only to run your account — no marketing without your say-so.</span>
         </label>
 
-        <button class="btn pine" id="submit" type="submit">Create my workspace</button>
+        <div id="su-turnstile"></div>
+
+        <button class="btn pine" id="submit" type="submit">Text me my code</button>
         <div class="fine">No credit card. Live in minutes.</div>
       </form>
+    </div>
+
+    <div id="codeview">
+      <span class="eyebrow">One quick check</span>
+      <h1>Enter your code.</h1>
+      <p class="lede">We texted a 6-digit code to <strong id="c-phone">your mobile</strong>. It's good for 10 minutes — it's how we know this phone is really yours.</p>
+
+      <div class="msg err" id="codeerr"></div>
+
+      <form id="cf" novalidate>
+        <label for="d1">Your 6-digit code</label>
+        <div class="su-code">
+          <input class="su-digit" id="d1" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="digit 1">
+          <input class="su-digit" id="d2" inputmode="numeric" maxlength="1" aria-label="digit 2">
+          <input class="su-digit" id="d3" inputmode="numeric" maxlength="1" aria-label="digit 3">
+          <input class="su-digit" id="d4" inputmode="numeric" maxlength="1" aria-label="digit 4">
+          <input class="su-digit" id="d5" inputmode="numeric" maxlength="1" aria-label="digit 5">
+          <input class="su-digit" id="d6" inputmode="numeric" maxlength="1" aria-label="digit 6">
+        </div>
+        <button class="btn pine" id="create" type="submit">Create my workspace</button>
+      </form>
+      <div class="resend">Didn't get it, or typed the wrong mobile? <button class="linkbtn" id="resend" type="button">Send a new code</button></div>
     </div>
 
     <div class="success" id="successview">
@@ -145,15 +190,42 @@
 <footer>© 2026 Strum · Made in Red Deer, Alberta · A text is a strum.</footer>
 
 <script>
-  var FN_URL = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/tenant-signup";
+  // Two calls, in order:
+  //   1. signup-request-code — human check + limits, then texts the 6-digit code.
+  //   2. tenant-signup — checks that code on the server, then sets up the shop.
+  var FN_BASE = "https://migitrhwuefeontgakoj.supabase.co/functions/v1/";
+  var CODE_URL = FN_BASE + "signup-request-code";
+  var SIGNUP_URL = FN_BASE + "tenant-signup";
+
   var form = document.getElementById('f');
   var errbox = document.getElementById('errbox');
   var btn = document.getElementById('submit');
+  var formview = document.getElementById('formview');
+  var codeview = document.getElementById('codeview');
+  var codeForm = document.getElementById('cf');
+  var codeErr = document.getElementById('codeerr');
+  var createBtn = document.getElementById('create');
+  var digits = Array.prototype.slice.call(document.querySelectorAll('.su-digit'));
+  var fields = null;   // the form values the code was texted for
+  var busy = false;    // one request at a time
 
-  function fail(msg){ errbox.textContent = msg; errbox.style.display = 'block'; window.scrollTo({top:0,behavior:'smooth'}); }
+  function show(box, msg){ box.textContent = msg; box.style.display = 'block'; window.scrollTo({top:0,behavior:'smooth'}); }
+  function fail(msg){ show(errbox, msg); }
+  function codeFail(msg){ show(codeErr, msg); }
+  function post(url, body){
+    return fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, status:r.status, body:j }; }); });
+  }
+  function turnstileToken(){ try { return (window.__ts && window.__ts.widget !== null && window.turnstile) ? turnstile.getResponse(window.__ts.widget) : ""; } catch(e){ return ""; } }
+  function resetTurnstile(){ try { if (window.__ts && window.__ts.widget !== null && window.turnstile) turnstile.reset(window.__ts.widget); } catch(e){} }
+  function clearDigits(){ digits.forEach(function(d){ d.value = ""; }); }
+  function lockDigits(on){ digits.forEach(function(d){ d.disabled = on; }); }
+  function prettyPhone(raw){ var d = raw.replace(/\D/g,'').slice(-10); return d.length === 10 ? "(" + d.slice(0,3) + ") " + d.slice(3,6) + "-" + d.slice(6) : raw; }
 
+  // ---- Step 1: check the form, then ask for the texted code ----
   form.addEventListener('submit', function(ev){
     ev.preventDefault();
+    if (busy) return;
     errbox.style.display = 'none';
 
     var first = document.getElementById('first_name').value.trim();
@@ -167,36 +239,113 @@
     if(!first || !last) return fail("We'd love your first and last name.");
     if(!company) return fail("What's your business called?");
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail("That email doesn't look quite right.");
-    if(mobile.replace(/\D/g,'').length < 10) return fail("Your mobile needs 10 digits — it's where your welcome text lands.");
+    if(mobile.replace(/\D/g,'').length < 10) return fail("Your mobile needs 10 digits — it's where your code and your welcome text land.");
     if(!consent) return fail("The consent box is the one thing we can't skip — Canadian rules, kept honestly.");
 
-    btn.disabled = true; btn.textContent = "Setting up your shop…";
+    var token = turnstileToken();
+    if(!token) return fail("One moment — we're still confirming you're human. Give it a second and press the button again.");
 
-    fetch(FN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ first_name:first, last_name:last, company:company, email:email, mobile:mobile, consent:consent, website:website })
+    busy = true; btn.disabled = true; btn.textContent = "Texting your code…";
+    function done(){ busy = false; btn.disabled = false; btn.textContent = "Text me my code"; resetTurnstile(); }
+
+    var sent = { first_name:first, last_name:last, company:company, email:email, mobile:mobile, consent:consent, website:website };
+    post(CODE_URL, {
+      first_name:first, last_name:last, company:company, email:email, mobile:mobile,
+      consent:consent, website:website, turnstile_token:token
     })
-    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, body:j }; }); })
     .then(function(res){
+      done();
       if(res.ok && res.body && res.body.ok){
-        document.getElementById('formview').style.display = 'none';
-        document.getElementById('s-head').textContent = "You're in, " + first + ".";
-        document.getElementById('s-number').textContent = res.body.your_number || "";
-        document.getElementById('successview').style.display = 'block';
+        fields = sent;
+        document.getElementById('c-phone').textContent = prettyPhone(mobile);
+        codeErr.style.display = 'none';
+        clearDigits(); lockDigits(false);
+        formview.style.display = 'none';
+        codeview.style.display = 'block';
         window.scrollTo({top:0,behavior:'smooth'});
+        digits[0].focus();
       } else if(res.body && res.body.error === 'already_signed_up'){
         fail("Good news — this mobile already has a Strumworks workspace. Your setup link will reach you there.");
-        btn.disabled = false; btn.textContent = "Create my workspace";
       } else {
-        fail("Something went wrong on our side — nothing was charged, and we'd love a second try. (" + ((res.body && (res.body.error || res.body.message)) || "unknown") + ")");
-        btn.disabled = false; btn.textContent = "Create my workspace";
+        fail((res.body && res.body.detail) || ("Something went wrong on our side — no code was sent. (" + ((res.body && res.body.error) || res.status) + ")"));
       }
     })
     .catch(function(){
+      done();
       fail("We couldn't reach the server — please check your connection and try again.");
-      btn.disabled = false; btn.textContent = "Create my workspace";
     });
+  });
+
+  // ---- Step 2: send the code with the form; the server checks it ----
+  function submitCode(){ if (codeForm.requestSubmit) codeForm.requestSubmit(); else createBtn.click(); }
+  digits.forEach(function(d, i){
+    d.addEventListener('input', function(){
+      d.value = d.value.replace(/\D/g,'').slice(0,1);
+      if (d.value && i < digits.length - 1) digits[i+1].focus();
+      if (digits.every(function(x){ return x.value; })) submitCode();
+    });
+    d.addEventListener('keydown', function(e){ if (e.key === 'Backspace' && !d.value && i > 0) digits[i-1].focus(); });
+    d.addEventListener('paste', function(e){
+      var t = ((e.clipboardData||window.clipboardData).getData('text')||'').replace(/\D/g,'').slice(0,6);
+      if (!t) return;
+      e.preventDefault();
+      t.split('').forEach(function(c,j){ if (digits[j]) digits[j].value = c; });
+      digits[Math.min(t.length,5)].focus();
+      if (t.length === 6) submitCode();
+    });
+  });
+
+  codeForm.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    if (busy || !fields) return;
+    codeErr.style.display = 'none';
+    var code = digits.map(function(d){ return d.value; }).join('');
+    if(code.length !== 6) return codeFail("Enter all 6 digits of the code we texted you.");
+
+    busy = true; createBtn.disabled = true; createBtn.textContent = "Setting up your shop…"; lockDigits(true);
+    function done(){ busy = false; createBtn.disabled = false; createBtn.textContent = "Create my workspace"; lockDigits(false); }
+
+    var body = {}; for (var k in fields) body[k] = fields[k]; body.code = code;
+    post(SIGNUP_URL, body)
+    .then(function(res){
+      if(res.ok && res.body && res.body.ok){
+        codeview.style.display = 'none';
+        document.getElementById('s-head').textContent = "You're in, " + fields.first_name + ".";
+        document.getElementById('s-number').textContent = res.body.your_number || "";
+        document.getElementById('successview').style.display = 'block';
+        window.scrollTo({top:0,behavior:'smooth'});
+        return;
+      }
+      done();
+      var err = res.body && res.body.error;
+      if(err === 'already_signed_up'){
+        codeFail("Good news — this mobile already has a Strumworks workspace. Your setup link will reach you there.");
+      } else if(err === 'wrong_code' || err === 'code_required' || err === 'no_pending' || err === 'expired' ||
+                err === 'too_many_attempts' || err === 'code_already_used' || err === 'code_in_use' || err === 'signups_paused'){
+        // Nothing was set up. The server's own words say what to do next.
+        codeFail((res.body && res.body.message) || err);
+        clearDigits(); digits[0].focus();
+      } else {
+        // Past the code: something failed while the shop was being set up.
+        codeFail("Something went wrong on our side while setting up your shop — nothing was charged. Send a new code to try again. (" + (err || res.status) + ")");
+        clearDigits();
+      }
+    })
+    .catch(function(){
+      done();
+      codeFail("We couldn't reach the server — please check your connection and try again.");
+    });
+  });
+
+  // Back to the form (details kept) to send a fresh code.
+  document.getElementById('resend').addEventListener('click', function(){
+    if (busy) return;
+    codeview.style.display = 'none';
+    codeErr.style.display = 'none';
+    errbox.style.display = 'none';
+    formview.style.display = 'block';
+    resetTurnstile();
+    window.scrollTo({top:0,behavior:'smooth'});
   });
 </script>
 </body>
